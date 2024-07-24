@@ -39,6 +39,7 @@ bool Scheduler::CreateTask(const RoutineFactory& factory,
   return CreateTask(factory.create_routine(), name, factory.GetDataVisitor());
 }
 
+/* 创建任务 */
 bool Scheduler::CreateTask(std::function<void()>&& func,
                            const std::string& name,
                            std::shared_ptr<DataVisitorBase> visitor) {
@@ -47,6 +48,7 @@ bool Scheduler::CreateTask(std::function<void()>&& func,
     return false;
   }
 
+  // 根据名称创建任务ID
   auto task_id = GlobalData::RegisterTaskName(name);
 
   auto cr = std::make_shared<CRoutine>(func);
@@ -54,10 +56,12 @@ bool Scheduler::CreateTask(std::function<void()>&& func,
   cr->set_name(name);
   AINFO << "create croutine: " << name;
 
+  // 分发协程任务
   if (!DispatchTask(cr)) {
     return false;
   }
 
+  // 注册Notify唤醒任务, visitor参数为可选的
   if (visitor != nullptr) {
     visitor->RegisterNotifyCallback([this, task_id]() {
       if (cyber_unlikely(stop_.load())) {

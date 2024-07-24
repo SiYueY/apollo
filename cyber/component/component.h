@@ -38,7 +38,7 @@ using apollo::cyber::common::GlobalData;
 using apollo::cyber::proto::RoleAttributes;
 
 /**
- * @brief .
+ * @brief . 普通组件
  * The Component can process up to four channels of messages. The message type
  * is specified when the component is created. The Component is inherited from
  * ComponentBase. Your component can inherit from Component, and implement
@@ -222,23 +222,30 @@ bool Component<M0, NullType, NullType, NullType>::Initialize(
 template <typename M0, typename M1>
 bool Component<M0, M1, NullType, NullType>::Process(
     const std::shared_ptr<M0>& msg0, const std::shared_ptr<M1>& msg1) {
+  // 判断模块是否关闭
   if (is_shutdown_.load()) {
     return true;
   }
+  // 执行Proc()方法
   return Proc(msg0, msg1);
 }
 
 template <typename M0, typename M1>
 bool Component<M0, M1, NullType, NullType>::Initialize(
     const ComponentConfig& config) {
+  // 创建node节点
   node_.reset(new Node(config.name()));
+
+  // 加载配置文件
   LoadConfigFiles(config);
 
+  // 订阅消息数量需和reader数量相匹配
   if (config.readers_size() < 2) {
     AERROR << "Invalid config file: too few readers.";
     return false;
   }
 
+  // 初始化，在父类ComponentBase中实现
   if (!Init()) {
     AERROR << "Component Init() failed.";
     return false;
@@ -246,6 +253,7 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
 
   bool is_reality_mode = GlobalData::Instance()->IsRealityMode();
 
+  // 创建read1
   ReaderConfig reader_cfg;
   reader_cfg.channel_name = config.readers(1).channel();
   reader_cfg.qos_profile.CopyFrom(config.readers(1).qos_profile());
@@ -253,11 +261,13 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
 
   auto reader1 = node_->template CreateReader<M1>(reader_cfg);
 
+  // 创建raeder0
   reader_cfg.channel_name = config.readers(0).channel();
   reader_cfg.qos_profile.CopyFrom(config.readers(0).qos_profile());
   reader_cfg.pending_queue_size = config.readers(0).pending_queue_size();
 
   std::shared_ptr<Reader<M0>> reader0 = nullptr;
+  // 若为is_reality_mode模式则直接创建，否则创建回调函数
   if (cyber_likely(is_reality_mode)) {
     reader0 = node_->template CreateReader<M0>(reader_cfg);
   } else {
@@ -285,6 +295,7 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
     AERROR << "Component create reader failed.";
     return false;
   }
+  // 保存readers
   readers_.push_back(std::move(reader0));
   readers_.push_back(std::move(reader1));
 
@@ -293,6 +304,7 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
   }
 
   auto sched = scheduler::Instance();
+  // 创建回调函数，回调执行Proc()
   std::weak_ptr<Component<M0, M1>> self =
       std::dynamic_pointer_cast<Component<M0, M1>>(shared_from_this());
   auto func = [self](const std::shared_ptr<M0>& msg0,
@@ -309,7 +321,9 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
   for (auto& reader : readers_) {
     config_list.emplace_back(reader->ChannelId(), reader->PendingQueueSize());
   }
+  // 创建数据访问器
   auto dv = std::make_shared<data::DataVisitor<M0, M1>>(config_list);
+  // 创建协程类
   croutine::RoutineFactory factory =
       croutine::CreateRoutineFactory<M0, M1>(func, dv);
   return sched->CreateTask(factory, node_->Name());

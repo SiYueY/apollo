@@ -53,14 +53,15 @@ std::shared_ptr<CRoutine> ClassicContext::NextRoutine() {
   if (cyber_unlikely(stop_.load())) {
     return nullptr;
   }
-
+  // 从优先级最高的队列开始遍历
   for (int i = MAX_PRIO - 1; i >= 0; --i) {
+    // 获取当前优先级队列的锁
     ReadLockGuard<AtomicRWLock> lk(lq_->at(i));
     for (auto& cr : multi_pri_rq_->at(i)) {
       if (!cr->Acquire()) {
         continue;
       }
-
+      // 返回状态就绪的协程
       if (cr->UpdateState() == RoutineState::READY) {
         return cr;
       }
@@ -73,9 +74,12 @@ std::shared_ptr<CRoutine> ClassicContext::NextRoutine() {
 }
 
 void ClassicContext::Wait() {
+  // 获取锁
   std::unique_lock<std::mutex> lk(mtx_wrapper_->Mutex());
+  // 等待条件大于0
   cw_->Cv().wait_for(lk, std::chrono::milliseconds(1000),
                      [&]() { return notify_grp_[current_grp] > 0; });
+  // 对应协程的唤醒条件减1
   if (notify_grp_[current_grp] > 0) {
     notify_grp_[current_grp]--;
   }
@@ -89,10 +93,13 @@ void ClassicContext::Shutdown() {
   cw_->Cv().notify_all();
 }
 
+/* 唤醒 */
 void ClassicContext::Notify(const std::string& group_name) {
+  // 协程唤醒条件加1
   (&mtx_wq_[group_name])->Mutex().lock();
   notify_grp_[group_name]++;
   (&mtx_wq_[group_name])->Mutex().unlock();
+  // 唤醒线程
   cv_wq_[group_name].Cv().notify_one();
 }
 

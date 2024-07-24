@@ -34,22 +34,27 @@ namespace data {
 using apollo::cyber::Time;
 using apollo::cyber::base::AtomicHashMap;
 
+/* DataDispatcher消息分发器: 单例模式，所有数据分发都在DataDispatcher中进行
+ * DataDispatcher会把数据放入对应缓存中，并Notify通知对应的协程处理消息 */
 template <typename T>
 class DataDispatcher {
  public:
   using BufferVector =
       std::vector<std::weak_ptr<CacheBuffer<std::shared_ptr<T>>>>;
   ~DataDispatcher() {}
-
+  // 添加ChannelBuffer到buffers_map_中
   void AddBuffer(const ChannelBuffer<T>& channel_buffer);
-
+  // 分发Channel中下消息
   bool Dispatch(const uint64_t channel_id, const std::shared_ptr<T>& msg);
 
  private:
+  // DataNotifier单例模式
   DataNotifier* notifier_ = DataNotifier::Instance();
+  // buffers_map_的锁
   std::mutex buffers_map_mutex_;
+  // 哈希表 <key, value>: <Channel通道id(Topic), 订阅通道消息的CacheBuffer数组>
   AtomicHashMap<uint64_t, BufferVector> buffers_map_;
-
+  // 单例
   DECLARE_SINGLETON(DataDispatcher)
 };
 

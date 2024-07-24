@@ -31,32 +31,46 @@ namespace class_loader {
 
 /**
  *  for library load,createclass object
+ *  类加载器: 加载动态库，并实例化对象
  */
 class ClassLoader {
  public:
   explicit ClassLoader(const std::string& library_path);
   virtual ~ClassLoader();
 
+  // 库是否已经加载
   bool IsLibraryLoaded();
+  // 加载库
   bool LoadLibrary();
+  // 卸载库
   int UnloadLibrary();
+  // 获取库的路径
   const std::string GetLibraryPath() const;
+  // 获取类的名称
   template <typename Base>
   std::vector<std::string> GetValidClassNames();
+  // 实例化类对象
   template <typename Base>
   std::shared_ptr<Base> CreateClassObj(const std::string& class_name);
+  // 类是否有效
   template <typename Base>
   bool IsClassValid(const std::string& class_name);
 
  private:
+  // 当类删除
   template <typename Base>
   void OnClassObjDeleter(Base* obj);
 
  private:
+  // 类的路径
   std::string library_path_;
+  // 加载库引用次数
   int loadlib_ref_count_;
+  // 加载库引用次数锁
   std::mutex loadlib_ref_count_mutex_;
+  // 类对象引用次数
   int classobj_ref_count_;
+  // 类对象引用次数锁
   std::mutex classobj_ref_count_mutex_;
 };
 
@@ -72,13 +86,16 @@ bool ClassLoader::IsClassValid(const std::string& class_name) {
           valid_classes.end());
 }
 
+/* 实例化类对象 */
 template <typename Base>
 std::shared_ptr<Base> ClassLoader::CreateClassObj(
     const std::string& class_name) {
+  // 加载动态库
   if (!IsLibraryLoaded()) {
     LoadLibrary();
   }
 
+  // 根据类的名称创建对象
   Base* class_object = utility::CreateClassObj<Base>(class_name, this);
   if (class_object == nullptr) {
     AWARN << "CreateClassObj failed, ensure class has been registered. "
@@ -86,8 +103,10 @@ std::shared_ptr<Base> ClassLoader::CreateClassObj(
     return std::shared_ptr<Base>();
   }
 
+  // 创建类对象时引用计数加1
   std::lock_guard<std::mutex> lck(classobj_ref_count_mutex_);
   classobj_ref_count_ = classobj_ref_count_ + 1;
+  // 指定类的析构函数
   std::shared_ptr<Base> classObjSharePtr(
       class_object, std::bind(&ClassLoader::OnClassObjDeleter<Base>, this,
                               std::placeholders::_1));
@@ -101,6 +120,7 @@ void ClassLoader::OnClassObjDeleter(Base* obj) {
   }
 
   delete obj;
+  // 删除类对象时引用计数减1
   std::lock_guard<std::mutex> lck(classobj_ref_count_mutex_);
   --classobj_ref_count_;
 }

@@ -191,7 +191,9 @@ bool IsLibraryLoaded(const std::string& library_path,
           (num_lib_loader_class_factory_objs <= num_lib_class_factory_objs));
 }
 
+/* 通过指定的ClassLoader加载指定路径下的库 */
 bool LoadLibrary(const std::string& library_path, ClassLoader* loader) {
+  // 若类已被加载，则对应的ClassFactory添加依赖的ClassLoader
   if (IsLibraryLoadedByAnybody(library_path)) {
     AINFO << "lib has been loaded by others,only attach to class factory obj."
           << library_path;
@@ -209,8 +211,10 @@ bool LoadLibrary(const std::string& library_path, ClassLoader* loader) {
     std::lock_guard<std::recursive_mutex> lck(loader_mutex);
 
     try {
+      // 设置当前激活的ClassLoader和当前加载的动态库路径
       SetCurActiveClassLoader(loader);
       SetCurLoadingLibraryName(library_path);
+      // 创建poco_library
       shared_library = SharedLibraryPtr(new SharedLibrary(library_path));
     } catch (const LibraryLoadException& e) {
       SetCurLoadingLibraryName("");
@@ -242,6 +246,7 @@ bool LoadLibrary(const std::string& library_path, ClassLoader* loader) {
 
   std::lock_guard<std::recursive_mutex> lck(GetLibPathSharedLibMutex());
   LibPathSharedLibVector& opened_libraries = GetLibPathSharedLibVector();
+  // 保存加载路径和对应的poco_library
   opened_libraries.emplace_back(
       std::pair<std::string, SharedLibraryPtr>(library_path, shared_library));
   return true;

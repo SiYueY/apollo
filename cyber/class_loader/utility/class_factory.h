@@ -28,6 +28,7 @@ class ClassLoader;
 
 namespace utility {
 
+/* AbstractClassFactoryBase */
 class AbstractClassFactoryBase {
  public:
   AbstractClassFactoryBase(const std::string& class_name,
@@ -51,6 +52,7 @@ class AbstractClassFactoryBase {
   std::string class_name_;
 };
 
+/* 模板类AbstractClassFactory->AbstractClassFactoryBase */
 template <typename Base>
 class AbstractClassFactory : public AbstractClassFactoryBase {
  public:
@@ -66,6 +68,7 @@ class AbstractClassFactory : public AbstractClassFactoryBase {
   AbstractClassFactory& operator=(const AbstractClassFactory&);
 };
 
+/* 模板类ClassFactory->AbstractClassFactory */
 template <typename ClassObject, typename Base>
 class ClassFactory : public AbstractClassFactory<Base> {
  public:

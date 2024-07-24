@@ -51,6 +51,7 @@ void AbstractClassFactoryBase::RemoveOwnedClassLoader(
   }
 }
 
+// 判断ClassLoader是否属于AbstractClassFactoryBase
 bool AbstractClassFactoryBase::IsOwnedBy(const ClassLoader* loader) {
   std::vector<ClassLoader*>::iterator itr = std::find(
       relative_class_loaders_.begin(), relative_class_loaders_.end(), loader);

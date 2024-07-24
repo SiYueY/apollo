@@ -43,6 +43,9 @@ struct VisitorConfig {
 template <typename T>
 using BufferType = CacheBuffer<std::shared_ptr<T>>;
 
+/* DataVisitor消息访问器: 辅助类，一个数据处理过程对应一个DataVisitor，
+ * 通过在DataVisitor中注册Notify(唤醒对应协程，协程执行绑定的回调函数)，
+ * 并注册对应的Buffer到DataDispather */
 template <typename M0, typename M1 = NullType, typename M2 = NullType,
           typename M3 = NullType>
 class DataVisitor : public DataVisitorBase {
@@ -56,11 +59,14 @@ class DataVisitor : public DataVisitorBase {
                    new BufferType<M2>(configs[2].queue_size)),
         buffer_m3_(configs[3].channel_id,
                    new BufferType<M3>(configs[3].queue_size)) {
+    // 在DataDispatcher中增加ChannelBuffer
     DataDispatcher<M0>::Instance()->AddBuffer(buffer_m0_);
     DataDispatcher<M1>::Instance()->AddBuffer(buffer_m1_);
     DataDispatcher<M2>::Instance()->AddBuffer(buffer_m2_);
     DataDispatcher<M3>::Instance()->AddBuffer(buffer_m3_);
+    // 在在DataNotifier::Instance()中增加创建好的Notifier
     data_notifier_->AddNotifier(buffer_m0_.channel_id(), notifier_);
+    // 对接收到的消息进行数据融合
     data_fusion_ = new fusion::AllLatest<M0, M1, M2, M3>(
         buffer_m0_, buffer_m1_, buffer_m2_, buffer_m3_);
   }
@@ -74,6 +80,7 @@ class DataVisitor : public DataVisitorBase {
 
   bool TryFetch(std::shared_ptr<M0>& m0, std::shared_ptr<M1>& m1,    // NOLINT
                 std::shared_ptr<M2>& m2, std::shared_ptr<M3>& m3) {  // NOLINT
+    // 获取融合数据
     if (data_fusion_->Fusion(&next_msg_index_, m0, m1, m2, m3)) {
       next_msg_index_++;
       return true;
@@ -151,6 +158,7 @@ class DataVisitor<M0, M1, NullType, NullType> : public DataVisitorBase {
     }
   }
 
+  // 当有2个消息时，从融合Buffer中读取消息
   bool TryFetch(std::shared_ptr<M0>& m0, std::shared_ptr<M1>& m1) {  // NOLINT
     if (data_fusion_->Fusion(&next_msg_index_, m0, m1)) {
       next_msg_index_++;
@@ -180,6 +188,7 @@ class DataVisitor<M0, NullType, NullType, NullType> : public DataVisitorBase {
     data_notifier_->AddNotifier(buffer_.channel_id(), notifier_);
   }
 
+  // 当只有一个消息时，直接从Buffer中获取消息
   bool TryFetch(std::shared_ptr<M0>& m0) {  // NOLINT
     if (buffer_.Fetch(&next_msg_index_, m0)) {
       next_msg_index_++;

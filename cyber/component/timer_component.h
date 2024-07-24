@@ -27,7 +27,7 @@ namespace cyber {
 class Timer;
 
 /**
- * @brief .
+ * @brief . 定时组件
  * TimerComponent is a timer component. Your component can inherit from
  * Component, and implement Init() & Proc(), They are called by the CyberRT
  * frame.
@@ -39,7 +39,7 @@ class TimerComponent : public ComponentBase {
 
   /**
    * @brief init the component by protobuf object.
-   *
+   * 定时调度模块没有绑定消息收发，需用户创建reader来读取消息
    * @param config which is define in 'cyber/proto/component_conf.proto'
    *
    * @return returns true if successful, otherwise returns false

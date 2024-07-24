@@ -73,6 +73,7 @@ bool ModuleController::LoadAll() {
   return true;
 }
 
+/* 加载模块 */
 bool ModuleController::LoadModule(const DagConfig& dag_config) {
   for (auto module_config : dag_config.module_config()) {
     std::string load_path;
@@ -84,18 +85,23 @@ bool ModuleController::LoadModule(const DagConfig& dag_config) {
     }
     AINFO << "mainboard: use module library " << load_path;
 
+    // 通过类加载器加载load_path下的模块
     class_loader_manager_.LoadLibrary(load_path);
 
+    // 加载模块
     for (auto& component : module_config.components()) {
       const std::string& class_name = component.class_name();
+      // 创建模块对象
       std::shared_ptr<ComponentBase> base =
           class_loader_manager_.CreateClassObj<ComponentBase>(class_name);
+      // 调用对象的Initialize方法
       if (base == nullptr || !base->Initialize(component.config())) {
         return false;
       }
       component_list_.emplace_back(std::move(base));
     }
 
+    // 加载定时器模块
     for (auto& component : module_config.timer_components()) {
       const std::string& class_name = component.class_name();
       std::shared_ptr<ComponentBase> base =

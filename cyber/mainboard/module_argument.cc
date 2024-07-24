@@ -45,10 +45,14 @@ void ModuleArgument::DisplayUsage() {
         << "    " << binary_name_ << " --plugin plugin_xml_conf -d dag_conf ";
 }
 
+/* 解析参数 */
 void ModuleArgument::ParseArgument(const int argc, char* const argv[]) {
+  // 二进制模块名称
   binary_name_ = std::string(basename(argv[0]));
+  // 解析参数
   GetOptions(argc, argv);
 
+  // 若process_group_和sched_name_为空，则设置为默认值
   if (process_group_.empty()) {
     process_group_ = DEFAULT_process_group_;
   }
@@ -57,10 +61,12 @@ void ModuleArgument::ParseArgument(const int argc, char* const argv[]) {
     sched_name_ = DEFAULT_sched_name_;
   }
 
+  // 若process_group_和sched_name_非空，则设置对应参数
   GlobalData::Instance()->SetProcessGroup(process_group_);
   GlobalData::Instance()->SetSchedName(sched_name_);
   AINFO << "binary_name_ is " << binary_name_ << ", process_group_ is "
         << process_group_ << ", has " << dag_conf_list_.size() << " dag conf";
+  // 打印dag_conf配置
   for (std::string& dag : dag_conf_list_) {
     AINFO << "dag_conf: " << dag;
   }

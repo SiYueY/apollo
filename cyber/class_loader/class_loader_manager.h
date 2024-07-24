@@ -29,6 +29,7 @@ namespace apollo {
 namespace cyber {
 namespace class_loader {
 
+/* 类加载管理器主要管理不同的classloader */
 class ClassLoaderManager {
  public:
   ClassLoaderManager();
@@ -63,6 +64,7 @@ class ClassLoaderManager {
 
  private:
   std::mutex libpath_loader_map_mutex_;
+  // 不同的libpath对应不同的classloader, <library_path, ClassLoader>
   std::map<std::string, ClassLoader*> libpath_loader_map_;
 };
 

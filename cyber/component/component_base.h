@@ -38,6 +38,7 @@ namespace cyber {
 using apollo::cyber::proto::ComponentConfig;
 using apollo::cyber::proto::TimerComponentConfig;
 
+/* 基础组件 */
 class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
  public:
   template <typename M>
@@ -45,8 +46,11 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
 
   virtual ~ComponentBase() {}
 
+  /* 初始化普通组件 */
   virtual bool Initialize(const ComponentConfig& config) { return false; }
+  /* 初始化定时组件 */
   virtual bool Initialize(const TimerComponentConfig& config) { return false; }
+  /* 关闭 */
   virtual void Shutdown() {
     if (is_shutdown_.exchange(true)) {
       return;
@@ -59,6 +63,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
     scheduler::Instance()->RemoveTask(node_->Name());
   }
 
+  /* 获取Protobuf格式的配置*/
   template <typename T>
   bool GetProtoConfig(T* config) const {
     return common::GetProtoFromFile(config_file_path_, config);
@@ -69,7 +74,9 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
   virtual void Clear() { return; }
   const std::string& ConfigFilePath() const { return config_file_path_; }
 
+  /* 加载普通组件的配置文件 */
   void LoadConfigFiles(const ComponentConfig& config) {
+    // 获取配置文件路径
     if (!config.config_file_path().empty()) {
       if (!common::GetFilePathWithEnv(config.config_file_path(),
                                       "APOLLO_CONF_PATH", &config_file_path_)) {
@@ -80,6 +87,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
       }
     }
 
+    // 设置flag文件路径
     if (!config.flag_file_path().empty()) {
       std::string flag_file_path = config.flag_file_path();
       if (!common::GetFilePathWithEnv(config.flag_file_path(),
@@ -92,6 +100,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
     }
   }
 
+  /* 加载定时组件的配置文件 */
   void LoadConfigFiles(const TimerComponentConfig& config) {
     if (!config.config_file_path().empty()) {
       if (!common::GetFilePathWithEnv(config.config_file_path(),
@@ -115,6 +124,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
     }
   }
 
+  /* 每个组件component会自动创建一个节点node，并且可挂载多个reader */
   std::atomic<bool> is_shutdown_ = {false};
   std::shared_ptr<Node> node_ = nullptr;
   std::string config_file_path_ = "";

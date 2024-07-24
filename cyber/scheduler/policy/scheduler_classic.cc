@@ -82,16 +82,22 @@ SchedulerClassic::SchedulerClassic() {
 }
 
 void SchedulerClassic::CreateProcessor() {
+  // 读取调度配置文件
   for (auto& group : classic_conf_.groups()) {
+    // 分组名称
     auto& group_name = group.name();
+    // 分组执行器(线程)数量，即协程池大小
     auto proc_num = group.processor_num();
     if (task_pool_size_ == 0) {
       task_pool_size_ = proc_num;
     }
-
+    // 分组CPU亲和性
     auto& affinity = group.affinity();
+    // 分组线程调度策略
     auto& processor_policy = group.processor_policy();
+    // 分组优先级
     auto processor_prio = group.processor_prio();
+    // 分组CPU set
     std::vector<int> cpuset;
     ParseCpuset(group.cpuset(), &cpuset);
 
@@ -100,8 +106,11 @@ void SchedulerClassic::CreateProcessor() {
       pctxs_.emplace_back(ctx);
 
       auto proc = std::make_shared<Processor>();
+      // 绑定上下文
       proc->BindContext(ctx);
+      // 设置线程的cpuset和cpu亲和性
       SetSchedAffinity(proc->Thread(), cpuset, affinity, i);
+      // 设置线程调度策略和优先级, proc->Tid()为线程pid
       SetSchedPolicy(proc->Thread(), processor_policy, processor_prio,
                      proc->Tid());
       processors_.emplace_back(proc);
@@ -112,6 +121,7 @@ void SchedulerClassic::CreateProcessor() {
 bool SchedulerClassic::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
   // we use multi-key mutex to prevent race condition
   // when del && add cr with same crid
+  // 根据协程id, 获取协程的锁
   MutexWrapper* wrapper = nullptr;
   if (!id_map_mutex_.Get(cr->id(), &wrapper)) {
     {
@@ -123,7 +133,7 @@ bool SchedulerClassic::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
     }
   }
   std::lock_guard<std::mutex> lg(wrapper->Mutex());
-
+  // 将协程放入map<id, croutine>
   {
     WriteLockGuard<AtomicRWLock> lk(id_cr_lock_);
     if (id_cr_.find(cr->id()) != id_cr_.end()) {
@@ -131,7 +141,7 @@ bool SchedulerClassic::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
     }
     id_cr_[cr->id()] = cr;
   }
-
+  // 设置协程的优先级和group
   if (cr_confs_.find(cr->name()) != cr_confs_.end()) {
     ClassicTask task = cr_confs_[cr->name()];
     cr->set_priority(task.prio());
@@ -147,7 +157,7 @@ bool SchedulerClassic::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
     cr->set_priority(MAX_PRIO - 1);
   }
 
-  // Enqueue task.
+  // Enqueue task. 将协程放入对应的优先级队列
   {
     WriteLockGuard<AtomicRWLock> lk(
         ClassicContext::rq_locks_[cr->group_name()].at(cr->priority()));
@@ -156,6 +166,7 @@ bool SchedulerClassic::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
         .emplace_back(cr);
   }
 
+  // 唤醒协程组
   ClassicContext::Notify(cr->group_name());
   return true;
 }

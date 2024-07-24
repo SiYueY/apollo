@@ -32,13 +32,17 @@ bool TimerComponent::Process() {
   return Proc();
 }
 
+/* 初始化 */
 bool TimerComponent::Initialize(const TimerComponentConfig& config) {
   if (!config.has_name() || !config.has_interval()) {
     AERROR << "Missing required field in config file.";
     return false;
   }
+
+  // 创建node
   node_.reset(new Node(config.name()));
   LoadConfigFiles(config);
+  // 调用用户自定义的初始化函数
   if (!Init()) {
     return false;
   }
@@ -47,6 +51,7 @@ bool TimerComponent::Initialize(const TimerComponentConfig& config) {
   std::shared_ptr<TimerComponent> self =
       std::dynamic_pointer_cast<TimerComponent>(shared_from_this());
   auto func = [self]() { self->Process(); };
+  // 创建定时器，定时调用Proc()函数
   timer_.reset(new Timer(config.interval(), func, false));
   timer_->Start();
   return true;

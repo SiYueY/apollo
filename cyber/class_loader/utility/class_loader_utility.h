@@ -73,6 +73,7 @@ Base* CreateClassObj(const std::string& class_name, ClassLoader* loader);
 template <typename Base>
 std::vector<std::string> GetValidClassNames(ClassLoader* loader);
 
+/* 注册类对象 */
 template <typename Derived, typename Base>
 void RegisterClass(const std::string& class_name,
                    const std::string& base_class_name) {
@@ -91,6 +92,7 @@ void RegisterClass(const std::string& class_name,
   GetClassFactoryMapMapMutex().unlock();
 }
 
+/* 创建类对象 */
 template <typename Base>
 Base* CreateClassObj(const std::string& class_name, ClassLoader* loader) {
   GetClassFactoryMapMapMutex().lock();
@@ -111,6 +113,7 @@ Base* CreateClassObj(const std::string& class_name, ClassLoader* loader) {
   return classobj;
 }
 
+/* 查找ClassLoader中所有类的名称 */
 template <typename Base>
 std::vector<std::string> GetValidClassNames(ClassLoader* loader) {
   std::lock_guard<std::recursive_mutex> lck(GetClassFactoryMapMapMutex());

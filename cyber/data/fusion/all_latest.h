@@ -41,6 +41,7 @@ class AllLatest : public DataFusion<M0, M1, M2, M3> {
                                     std::shared_ptr<M2>, std::shared_ptr<M3>>;
 
  public:
+  // 若存在多个消息时，以第1个消息为基准，将其他消息的最新消息放入融合好的buffer_fusion_
   AllLatest(const ChannelBuffer<M0>& buffer_0,
             const ChannelBuffer<M1>& buffer_1,
             const ChannelBuffer<M2>& buffer_2,
@@ -49,6 +50,8 @@ class AllLatest : public DataFusion<M0, M1, M2, M3> {
         buffer_m1_(buffer_1),
         buffer_m2_(buffer_2),
         buffer_m3_(buffer_3),
+        // 只注册buffer_0的回调，其他消息将最新消息放入CacheBuffer
+        // buffer_0直接调用回调函数，把消息放入融合的CacheBuffer
         buffer_fusion_(buffer_m0_.channel_id(),
                        new CacheBuffer<std::shared_ptr<FusionDataType>>(
                            buffer_0.Buffer()->Capacity() - uint64_t(1))) {

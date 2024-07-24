@@ -30,6 +30,7 @@ namespace apollo {
 namespace cyber {
 namespace croutine {
 
+/* 协程工厂 */
 class RoutineFactory {
  public:
   using VoidFunc = std::function<void()>;
@@ -47,18 +48,23 @@ class RoutineFactory {
   std::shared_ptr<data::DataVisitorBase> data_visitor_ = nullptr;
 };
 
+/* 创建协程工厂 */
 template <typename M0, typename F>
 RoutineFactory CreateRoutineFactory(
     F&& f, const std::shared_ptr<data::DataVisitor<M0>>& dv) {
   RoutineFactory factory;
+  // 设置DataVisitor
   factory.SetDataVisitor(dv);
   factory.create_routine = [=]() {
     return [=]() {
       std::shared_ptr<M0> msg;
       for (;;) {
         CRoutine::GetCurrentRoutine()->set_state(RoutineState::DATA_WAIT);
+        // 从DataVisitor获取数据
         if (dv->TryFetch(msg)) {
+          // 执行回调函数
           f(msg);
+          // 继续休眠
           CRoutine::Yield(RoutineState::READY);
         } else {
           CRoutine::Yield();

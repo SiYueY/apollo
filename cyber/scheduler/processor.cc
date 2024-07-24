@@ -44,17 +44,21 @@ void Processor::Run() {
 
   while (cyber_likely(running_.load())) {
     if (cyber_likely(context_ != nullptr)) {
+      // 获取优先级最高并准备就绪的协程
       auto croutine = context_->NextRoutine();
       if (croutine) {
         snap_shot_->execute_start_time.store(cyber::Time::Now().ToNanosecond());
         snap_shot_->routine_name = croutine->name();
+        // 执行协程任务，完成后释放协程
         croutine->Resume();
         croutine->Release();
       } else {
         snap_shot_->execute_start_time.store(0);
+        // 若协程组中没有空闲协程，则等待
         context_->Wait();
       }
     } else {
+      // 若上下文为空，则线程阻塞10ms
       std::unique_lock<std::mutex> lk(mtx_ctx_);
       cv_ctx_.wait_for(lk, std::chrono::milliseconds(10));
     }
@@ -77,7 +81,9 @@ void Processor::Stop() {
 }
 
 void Processor::BindContext(const std::shared_ptr<ProcessorContext>& context) {
+  // 协程执行的上下文信息，会随着协程切换而切换
   context_ = context;
+  // 绑定Processor到具体的路径
   std::call_once(thread_flag_,
                  [this]() { thread_ = std::thread(&Processor::Run, this); });
 }

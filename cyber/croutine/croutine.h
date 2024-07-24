@@ -35,6 +35,7 @@ namespace croutine {
 using RoutineFunc = std::function<void()>;
 using Duration = std::chrono::microseconds;
 
+/* 协程状态 */
 enum class RoutineState { READY, FINISHED, SLEEP, IO_WAIT, DATA_WAIT };
 
 class CRoutine {
@@ -42,14 +43,14 @@ class CRoutine {
   explicit CRoutine(const RoutineFunc &func);
   virtual ~CRoutine();
 
-  // static interfaces
+  // static interfaces 静态接口
   static void Yield();
   static void Yield(const RoutineState &state);
   static void SetMainContext(const std::shared_ptr<RoutineContext> &context);
   static CRoutine *GetCurrentRoutine();
   static char **GetMainStack();
 
-  // public interfaces
+  // public interfaces  公开接口
   bool Acquire();
   void Release();
 

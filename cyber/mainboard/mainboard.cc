@@ -25,22 +25,26 @@ using apollo::cyber::mainboard::ModuleArgument;
 using apollo::cyber::mainboard::ModuleController;
 
 int main(int argc, char** argv) {
-  // parse the argument
+  // parse the argument 解析参数
   ModuleArgument module_args;
   module_args.ParseArgument(argc, argv);
 
-  // initialize cyber
+  // initialize cyber 初始化cyber
   apollo::cyber::Init(argv[0]);
 
-  // start module
+  // start module 加载模块
   ModuleController controller(module_args);
+  // Init()--->LoadAll()
   if (!controller.Init()) {
     controller.Clear();
     AERROR << "module start error.";
     return -1;
   }
 
+  // 等待直到程序退出
   apollo::cyber::WaitForShutdown();
+
+  // 卸载模块
   controller.Clear();
   AINFO << "exit mainboard.";
 

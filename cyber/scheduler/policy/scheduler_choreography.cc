@@ -123,6 +123,7 @@ void SchedulerChoreography::CreateProcessor() {
 bool SchedulerChoreography::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
   // we use multi-key mutex to prevent race condition
   // when del && add cr with same crid
+  // 根据协程id, 获取协程的锁
   MutexWrapper* wrapper = nullptr;
   if (!id_map_mutex_.Get(cr->id(), &wrapper)) {
     {
@@ -136,6 +137,7 @@ bool SchedulerChoreography::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
   std::lock_guard<std::mutex> lg(wrapper->Mutex());
 
   // Assign sched cfg to tasks according to configuration.
+  // 设置优先级和协程绑定的Process Id
   if (cr_confs_.find(cr->name()) != cr_confs_.end()) {
     ChoreographyTask taskconf = cr_confs_[cr->name()];
     cr->set_priority(taskconf.prio());
@@ -155,8 +157,10 @@ bool SchedulerChoreography::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
 
   // Enqueue task.
   uint32_t pid = cr->processor_id();
+  // 若Processor小于proc_num_, 默认Processor Id为-1
   if (pid < proc_num_) {
     // Enqueue task to Choreo Policy.
+    // 协程放入上下文本地队列中
     static_cast<ChoreographyContext*>(pctxs_[pid].get())->Enqueue(cr);
   } else {
     // Check if task prio is reasonable.
@@ -168,6 +172,7 @@ bool SchedulerChoreography::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
     cr->set_group_name(DEFAULT_GROUP_NAME);
 
     // Enqueue task to pool runqueue.
+    // 协程放入ClassicContext协程队列中
     {
       WriteLockGuard<AtomicRWLock> lk(
           ClassicContext::rq_locks_[DEFAULT_GROUP_NAME].at(cr->priority()));

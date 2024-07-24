@@ -32,8 +32,10 @@ namespace data {
 
 class DataVisitorBase {
  public:
+  // 构造函数: 创建Notifier
   DataVisitorBase() : notifier_(new Notifier()) {}
 
+  // 设置注册回调
   void RegisterNotifyCallback(std::function<void()>&& callback) {
     notifier_->callback = callback;
   }
@@ -42,7 +44,9 @@ class DataVisitorBase {
   DataVisitorBase(const DataVisitorBase&) = delete;
   DataVisitorBase& operator=(const DataVisitorBase&) = delete;
 
+  // 下一次消息的index
   uint64_t next_msg_index_ = 0;
+  // DataNotifier单例
   DataNotifier* data_notifier_ = DataNotifier::Instance();
   std::shared_ptr<Notifier> notifier_;
 };
