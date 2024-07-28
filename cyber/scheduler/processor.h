@@ -36,12 +36,14 @@ namespace scheduler {
 
 using croutine::CRoutine;
 
+/* 快照 snapshot */
 struct Snapshot {
   std::atomic<uint64_t> execute_start_time = {0};
   std::atomic<pid_t> processor_id = {0};
   std::string routine_name;
 };
 
+/* 执行器 Processor */
 class Processor {
  public:
   Processor();

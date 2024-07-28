@@ -42,6 +42,7 @@ using apollo::cyber::event::TransPerf;
  * it contains the channel_name, channel_id that we subscribe,
  * and host_name, process_id and node that we are located,
  * and qos that describes our transportation quality.
+ * qos: Quality of Service, 描述了消息传输的服务质量.
  */
 class ReaderBase {
  public:

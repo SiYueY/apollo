@@ -34,33 +34,35 @@ namespace data {
 using apollo::cyber::Time;
 using apollo::cyber::base::AtomicHashMap;
 
-/* DataDispatcher消息分发器: 单例模式，所有数据分发都在DataDispatcher中进行
- * DataDispatcher会把数据放入对应缓存中，并Notify通知对应的协程处理消息 */
+/* DataDispatcher 消息分发器: 单例模式，所有数据分发都在 DataDispatcher 中进行.
+ * DataDispatcher 会把数据放入对应缓存中，并 Notify 通知对应的协程处理消息 */
 template <typename T>
 class DataDispatcher {
  public:
   using BufferVector =
       std::vector<std::weak_ptr<CacheBuffer<std::shared_ptr<T>>>>;
   ~DataDispatcher() {}
-  // 添加ChannelBuffer到buffers_map_中
+  // 添加 ChannelBuffer 到 buffers_map_ 中
   void AddBuffer(const ChannelBuffer<T>& channel_buffer);
-  // 分发Channel中下消息
+  // 分发 Channel 中的消息
   bool Dispatch(const uint64_t channel_id, const std::shared_ptr<T>& msg);
 
  private:
-  // DataNotifier单例模式
+  // DataNotifier 单例模式
   DataNotifier* notifier_ = DataNotifier::Instance();
-  // buffers_map_的锁
+  // buffers_map_ 互斥锁
   std::mutex buffers_map_mutex_;
-  // 哈希表 <key, value>: <Channel通道id(Topic), 订阅通道消息的CacheBuffer数组>
+  // 哈希表 <key, value>: <Channel id(Topic), 订阅通道消息的 CacheBuffer 数组>
   AtomicHashMap<uint64_t, BufferVector> buffers_map_;
-  // 单例
+  // 单例模式
   DECLARE_SINGLETON(DataDispatcher)
 };
 
+/* 构造函数 */
 template <typename T>
 inline DataDispatcher<T>::DataDispatcher() {}
 
+/* 向 DataDispatcher 中添加 ChannelBuffer，用于存储和分发消息。 */
 template <typename T>
 void DataDispatcher<T>::AddBuffer(const ChannelBuffer<T>& channel_buffer) {
   std::lock_guard<std::mutex> lock(buffers_map_mutex_);
@@ -74,6 +76,7 @@ void DataDispatcher<T>::AddBuffer(const ChannelBuffer<T>& channel_buffer) {
   }
 }
 
+/* 分发消息到所有注册的 CacheBuffer 中 */
 template <typename T>
 bool DataDispatcher<T>::Dispatch(const uint64_t channel_id,
                                  const std::shared_ptr<T>& msg) {

@@ -40,7 +40,9 @@ enum class RoutineState { READY, FINISHED, SLEEP, IO_WAIT, DATA_WAIT };
 
 class CRoutine {
  public:
+  /* 构造函数 */
   explicit CRoutine(const RoutineFunc &func);
+  /* 析构函数 */
   virtual ~CRoutine();
 
   // static interfaces 静态接口

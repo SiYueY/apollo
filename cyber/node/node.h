@@ -36,10 +36,12 @@ class TimerComponent;
  * @class Node
  * @brief Node is the fundamental building block of Cyber RT.
  * every module contains and communicates through the node.
+ * 每个模块都包含一个 node ，并通过该 node 进行通信
  * A module can have different types of communication by defining
  * read/write and/or service/client in a node.
  * @warning Duplicate name is not allowed in topo objects, such as node,
  * reader/writer, service/clinet in the topo.
+ * 拓扑机构中(如 node、reader/writer、service/clinet)不允许重名.
  */
 class Node {
  public:
@@ -53,7 +55,8 @@ class Node {
 
   /**
    * @brief Get node's name.
-   * @warning duplicate node name is not allowed in the topo.
+   * @warning duplicate node name is not allowed in the topo. 拓扑结构中的 node
+   * 不允许充棉
    */
   const std::string& Name() const;
 
@@ -205,6 +208,7 @@ auto Node::CreateReader(const proto::RoleAttributes& role_attr,
                         const CallbackFunc<MessageT>& reader_func)
     -> std::shared_ptr<Reader<MessageT>> {
   std::lock_guard<std::mutex> lg(readers_mutex_);
+  /* 判断重名 */
   if (readers_.find(role_attr.channel_name()) != readers_.end()) {
     AWARN << "Failed to create reader: reader with the same channel already "
              "exists.";

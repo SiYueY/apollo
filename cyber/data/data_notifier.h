@@ -35,10 +35,14 @@ using apollo::cyber::Time;
 using apollo::cyber::base::AtomicHashMap;
 using apollo::cyber::event::PerfEventCache;
 
+/* Notifier 结构体 */
 struct Notifier {
+  // 函数类型，存储回调函数
   std::function<void()> callback;
 };
 
+/* DataNotifier：单例模式，用于管理回调通知，其提供添加通知器和触发通知的功能.
+ */
 class DataNotifier {
  public:
   using NotifyVector = std::vector<std::shared_ptr<Notifier>>;
@@ -50,7 +54,9 @@ class DataNotifier {
   bool Notify(const uint64_t channel_id);
 
  private:
+  // 互斥锁，用于同步对 notifies_map_ 的访问
   std::mutex notifies_map_mutex_;
+  //  AtomicHashMap 存储映射关系，将 channel ID 映射到 notifier
   AtomicHashMap<uint64_t, NotifyVector> notifies_map_;
 
   DECLARE_SINGLETON(DataNotifier)
@@ -58,6 +64,7 @@ class DataNotifier {
 
 inline DataNotifier::DataNotifier() {}
 
+/* 添加 notifier 到指定的 channel ID */
 inline void DataNotifier::AddNotifier(
     uint64_t channel_id, const std::shared_ptr<Notifier>& notifier) {
   std::lock_guard<std::mutex> lock(notifies_map_mutex_);
@@ -70,6 +77,7 @@ inline void DataNotifier::AddNotifier(
   }
 }
 
+/* 触发指定 channel ID 的所有 notifier 的回调函数。 */
 inline bool DataNotifier::Notify(const uint64_t channel_id) {
   NotifyVector* notifies = nullptr;
   if (notifies_map_.Get(channel_id, &notifies)) {

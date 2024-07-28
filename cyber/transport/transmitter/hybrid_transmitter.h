@@ -209,16 +209,18 @@ void HybridTransmitter<M>::InitHistory() {
 template <typename M>
 void HybridTransmitter<M>::InitTransmitters() {
   std::set<OptionalMode> modes;
-  modes.insert(mode_->same_proc());
-  modes.insert(mode_->diff_proc());
-  modes.insert(mode_->diff_host());
+  modes.insert(mode_->same_proc());  // 同一主机，同一进程内通信
+  modes.insert(mode_->diff_proc());  // 同一主机，不同进程间通信
+  modes.insert(mode_->diff_host());  // 不同主机间通信
   for (auto& mode : modes) {
     switch (mode) {
       case OptionalMode::INTRA:
+        // 进程间通信
         transmitters_[mode] =
             std::make_shared<IntraTransmitter<M>>(this->attr_);
         break;
       case OptionalMode::SHM:
+        // 共享内存通信
         transmitters_[mode] = std::make_shared<ShmTransmitter<M>>(this->attr_);
         break;
       default:

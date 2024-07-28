@@ -53,20 +53,26 @@ using MessageListener =
 
 class Dispatcher {
  public:
+  /* 构造函数 */
   Dispatcher();
+  /* 析构函数 */
   virtual ~Dispatcher();
 
+  /* 关闭 */
   virtual void Shutdown();
 
+  /* 添加 listener */
   template <typename MessageT>
   void AddListener(const RoleAttributes& self_attr,
                    const MessageListener<MessageT>& listener);
 
+  /* 添加 listener */
   template <typename MessageT>
   void AddListener(const RoleAttributes& self_attr,
                    const RoleAttributes& opposite_attr,
                    const MessageListener<MessageT>& listener);
 
+  /* 移除 listener */
   template <typename MessageT>
   void RemoveListener(const RoleAttributes& self_attr);
 

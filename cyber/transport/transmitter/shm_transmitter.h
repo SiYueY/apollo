@@ -35,6 +35,7 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 共享内存通信 */
 template <typename M>
 class ShmTransmitter : public Transmitter<M> {
  public:

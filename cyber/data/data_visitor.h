@@ -59,12 +59,12 @@ class DataVisitor : public DataVisitorBase {
                    new BufferType<M2>(configs[2].queue_size)),
         buffer_m3_(configs[3].channel_id,
                    new BufferType<M3>(configs[3].queue_size)) {
-    // 在DataDispatcher中增加ChannelBuffer
+    // 在 DataDispatcher 中增加 ChannelBuffer.
     DataDispatcher<M0>::Instance()->AddBuffer(buffer_m0_);
     DataDispatcher<M1>::Instance()->AddBuffer(buffer_m1_);
     DataDispatcher<M2>::Instance()->AddBuffer(buffer_m2_);
     DataDispatcher<M3>::Instance()->AddBuffer(buffer_m3_);
-    // 在在DataNotifier::Instance()中增加创建好的Notifier
+    // 在 DataNotifier::Instance() 中增加创建好的 Notifier
     data_notifier_->AddNotifier(buffer_m0_.channel_id(), notifier_);
     // 对接收到的消息进行数据融合
     data_fusion_ = new fusion::AllLatest<M0, M1, M2, M3>(
@@ -78,6 +78,7 @@ class DataVisitor : public DataVisitorBase {
     }
   }
 
+  /* 数据融合 */
   bool TryFetch(std::shared_ptr<M0>& m0, std::shared_ptr<M1>& m1,    // NOLINT
                 std::shared_ptr<M2>& m2, std::shared_ptr<M3>& m3) {  // NOLINT
     // 获取融合数据
@@ -158,7 +159,7 @@ class DataVisitor<M0, M1, NullType, NullType> : public DataVisitorBase {
     }
   }
 
-  // 当有2个消息时，从融合Buffer中读取消息
+  // 当有 2 个消息时，从融合 Buffer 中读取消息
   bool TryFetch(std::shared_ptr<M0>& m0, std::shared_ptr<M1>& m1) {  // NOLINT
     if (data_fusion_->Fusion(&next_msg_index_, m0, m1)) {
       next_msg_index_++;

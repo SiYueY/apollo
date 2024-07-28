@@ -87,7 +87,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
       }
     }
 
-    // 设置flag文件路径
+    // 设置 flag 文件路径
     if (!config.flag_file_path().empty()) {
       std::string flag_file_path = config.flag_file_path();
       if (!common::GetFilePathWithEnv(config.flag_file_path(),
@@ -124,7 +124,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
     }
   }
 
-  /* 每个组件component会自动创建一个节点node，并且可挂载多个reader */
+  /* 每个组件 component 会自动创建一个节点 node ，并且可挂载多个 reader. */
   std::atomic<bool> is_shutdown_ = {false};
   std::shared_ptr<Node> node_ = nullptr;
   std::string config_file_path_ = "";

@@ -38,6 +38,7 @@ Processor::Processor() { running_.store(true); }
 Processor::~Processor() { Stop(); }
 
 void Processor::Run() {
+  // 获取线程的 PID(全局唯一).
   tid_.store(static_cast<int>(syscall(SYS_gettid)));
   AINFO << "processor_tid: " << tid_;
   snap_shot_->processor_id.store(tid_);

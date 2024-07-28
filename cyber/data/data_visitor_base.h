@@ -30,9 +30,10 @@ namespace apollo {
 namespace cyber {
 namespace data {
 
+/* 消息访问器基类 */
 class DataVisitorBase {
  public:
-  // 构造函数: 创建Notifier
+  // 构造函数
   DataVisitorBase() : notifier_(new Notifier()) {}
 
   // 设置注册回调
@@ -44,7 +45,7 @@ class DataVisitorBase {
   DataVisitorBase(const DataVisitorBase&) = delete;
   DataVisitorBase& operator=(const DataVisitorBase&) = delete;
 
-  // 下一次消息的index
+  // 下一次消息的 index
   uint64_t next_msg_index_ = 0;
   // DataNotifier单例
   DataNotifier* data_notifier_ = DataNotifier::Instance();

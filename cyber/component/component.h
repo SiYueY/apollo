@@ -44,6 +44,7 @@ using apollo::cyber::proto::RoleAttributes;
  * ComponentBase. Your component can inherit from Component, and implement
  * Init() & Proc(...), They are picked up by the CyberRT. There are 4
  * specialization implementations.
+ * Component 能够同时处理最多四个 channels 的消息.
  *
  * @tparam M0 the first message.
  * @tparam M1 the second message.
@@ -233,13 +234,13 @@ bool Component<M0, M1, NullType, NullType>::Process(
 template <typename M0, typename M1>
 bool Component<M0, M1, NullType, NullType>::Initialize(
     const ComponentConfig& config) {
-  // 创建node节点
+  // 创建 node 节点
   node_.reset(new Node(config.name()));
 
   // 加载配置文件
   LoadConfigFiles(config);
 
-  // 订阅消息数量需和reader数量相匹配
+  // 订阅消息数量需和 reader 数量保持一致
   if (config.readers_size() < 2) {
     AERROR << "Invalid config file: too few readers.";
     return false;
@@ -253,7 +254,7 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
 
   bool is_reality_mode = GlobalData::Instance()->IsRealityMode();
 
-  // 创建read1
+  // 创建 read1
   ReaderConfig reader_cfg;
   reader_cfg.channel_name = config.readers(1).channel();
   reader_cfg.qos_profile.CopyFrom(config.readers(1).qos_profile());
@@ -261,7 +262,7 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
 
   auto reader1 = node_->template CreateReader<M1>(reader_cfg);
 
-  // 创建raeder0
+  // 创建 raeder0
   reader_cfg.channel_name = config.readers(0).channel();
   reader_cfg.qos_profile.CopyFrom(config.readers(0).qos_profile());
   reader_cfg.pending_queue_size = config.readers(0).pending_queue_size();

@@ -28,6 +28,7 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 进程内通信 */
 template <typename M>
 class IntraTransmitter : public Transmitter<M> {
  public:
