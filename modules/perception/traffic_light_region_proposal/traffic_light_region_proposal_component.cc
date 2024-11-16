@@ -38,7 +38,7 @@
 
 namespace apollo {
 namespace perception {
-namespace onboard {
+namespace trafficlight {
 
 using apollo::cyber::Clock;
 using apollo::cyber::common::GetAbsolutePath;
@@ -113,7 +113,6 @@ int TrafficLightsPerceptionComponent::InitConfig() {
 
   default_image_border_size_ = traffic_light_param.default_image_border_size();
 
-  frame_.reset(new camera::CameraFrame);
   traffic_detect_writer_ =
       node_->CreateWriter<TrafficDetectMessage>(proposal_output_channel_name_);
 
@@ -203,9 +202,6 @@ int TrafficLightsPerceptionComponent::InitCameraFrame() {
   data_provider_init_options_.image_height = image_height_;
   data_provider_init_options_.image_width = image_width_;
 
-  if (gpu_id_ == -1) {
-    return cyber::FAIL;
-  }
   data_provider_init_options_.device_id = gpu_id_;
   AINFO << "trafficlights data_provider_init_options_.device_id: "
         << data_provider_init_options_.device_id;
@@ -242,12 +238,20 @@ void TrafficLightsPerceptionComponent::OnReceiveImage(
     AERROR << "CheckCameraImageStatus failed";
     return;
   }
+  // trafficlight preprocess msg
+  std::shared_ptr<TrafficDetectMessage> preprocess_message(
+      new (std::nothrow) TrafficDetectMessage);
+  preprocess_message->timestamp_ = image_msg_ts;
+
+  auto& frame = preprocess_message->traffic_light_frame_;
+  frame.reset(new camera::TrafficLightFrame);
+  frame->timestamp = image_msg_ts;
 
   trafficlight::TLPreprocessorOption preprocess_option;
   preprocess_option.image_borders_size = &image_border_sizes_;
 
   // query pose and signals, add cached camera selection by lights' projections
-  if (!UpdateCameraSelection(image_msg_ts, preprocess_option, frame_.get())) {
+  if (!UpdateCameraSelection(image_msg_ts, preprocess_option, frame)) {
     AWARN << "add_cached_camera_selection failed, ts: " << image_msg_ts;
   }
 
@@ -276,11 +280,11 @@ void TrafficLightsPerceptionComponent::OnReceiveImage(
   // Fill camera frame
   camera::DataProvider::ImageOptions image_options;
   image_options.target_color = base::Color::RGB;
-  frame_->data_provider = data_providers_map_.at(camera_name).get();
-  frame_->data_provider->FillImageData(
+  frame->data_provider = data_providers_map_.at(camera_name);
+  frame->data_provider->FillImageData(
       image_height_, image_width_,
       reinterpret_cast<const uint8_t*>(msg->data().data()), msg->encoding());
-  frame_->timestamp = image_msg_ts;
+  frame->timestamp = image_msg_ts;
   // caros monitor -- image system time diff
   const auto& diff_image_sys_ts = image_msg_ts - receive_img_timestamp;
   if (fabs(diff_image_sys_ts) > image_sys_ts_diff_threshold_) {
@@ -294,12 +298,8 @@ void TrafficLightsPerceptionComponent::OnReceiveImage(
           << ", debug_string: " << debug_string;
   }
 
-  // trafficlight preprocess msg
-  std::shared_ptr<TrafficDetectMessage> preprocess_message(
-      new (std::nothrow) TrafficDetectMessage);
-
   if (!VerifyLightsProjection(image_msg_ts, preprocess_option, camera_name,
-                              frame_.get(), preprocess_message.get())) {
+                              frame, preprocess_message)) {
     AINFO << "VerifyLightsProjection on image failed, ts: " << image_msg_ts
           << ", camera_name: " << camera_name
           << " last_query_tf_ts_: " << last_query_tf_ts_
@@ -309,14 +309,7 @@ void TrafficLightsPerceptionComponent::OnReceiveImage(
   }
   last_proc_image_ts_ = Clock::NowInSeconds();
 
-  preprocess_message->timestamp_ = image_msg_ts;
   preprocess_message->stoplines_ = stoplines_;
-
-  auto& frame = preprocess_message->traffic_light_frame_;
-  frame.reset(new camera::TrafficLightFrame);
-  frame->timestamp = image_msg_ts;
-  frame->data_provider = frame_->data_provider;
-  frame->traffic_lights = frame_->traffic_lights;
 
   bool send_message_ret = traffic_detect_writer_->Write(preprocess_message);
   AINFO << "send out preprocess msg, ts: " << image_msg_ts
@@ -385,8 +378,9 @@ bool TrafficLightsPerceptionComponent::QueryPoseAndSignals(
 
 bool TrafficLightsPerceptionComponent::VerifyLightsProjection(
     const double& ts, const trafficlight::TLPreprocessorOption& option,
-    const std::string& camera_name, camera::CameraFrame* frame,
-    TrafficDetectMessage* msg) {
+    const std::string& camera_name,
+    std::shared_ptr<camera::TrafficLightFrame> frame,
+    std::shared_ptr<TrafficDetectMessage> msg) {
   camera::CarPose* pose_ptr = new camera::CarPose();
   auto& pose = *pose_ptr;
   std::vector<apollo::hdmap::Signal> signals;
@@ -413,7 +407,7 @@ bool TrafficLightsPerceptionComponent::VerifyLightsProjection(
 
 bool TrafficLightsPerceptionComponent::UpdateCameraSelection(
     double timestamp, const trafficlight::TLPreprocessorOption& option,
-    camera::CameraFrame* frame) {
+    std::shared_ptr<camera::TrafficLightFrame> frame) {
   const double current_ts = Clock::NowInSeconds();
   if (last_query_tf_ts_ > 0.0 &&
       current_ts - last_query_tf_ts_ < query_tf_interval_seconds_) {
@@ -555,6 +549,6 @@ bool TrafficLightsPerceptionComponent::GetPoseFromTF(
   return true;
 }
 
-}  // namespace onboard
+}  // namespace trafficlight
 }  // namespace perception
 }  // namespace apollo

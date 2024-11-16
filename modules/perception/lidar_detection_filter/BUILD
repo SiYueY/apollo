@@ -25,6 +25,7 @@ apollo_cc_library(
         "interface/base_object_filter.h",
         "object_filter_bank/object_filter_bank.h",
     ],
+    copts = PERCEPTION_COPTS + if_profiler() + ["-DENABLE_PROFILER=1"],
     deps = [
         "//cyber",
         "//modules/common/util:common_util",
@@ -50,7 +51,7 @@ apollo_component(
     name = "liblidar_detection_filter_component.so",
     srcs = ["lidar_detection_filter_component.cc"],
     hdrs = ["lidar_detection_filter_component.h"],
-    copts = PERCEPTION_COPTS + if_profiler(),
+    copts = PERCEPTION_COPTS + if_profiler() + ["-DENABLE_PROFILER=1"],
     deps = [
         "//cyber",
         "//modules/perception/common/onboard:apollo_perception_common_onboard",

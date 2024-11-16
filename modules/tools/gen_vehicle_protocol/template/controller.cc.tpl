@@ -42,10 +42,14 @@ const int32_t CHECK_RESPONSE_SPEED_UNIT_FLAG = 2;
 
 }  // namespace
 
+void %(car_type_cap)sController::AddSendMessage() {
+%(protocol_add_list)s
+}
+
 ErrorCode %(car_type_cap)sController::Init(
 	const VehicleParameter& params,
 	CanSender<::apollo::canbus::%(car_type_cap)s> *const can_sender,
-    MessageManager<::apollo::canbus::%(car_type_cap)s> *const message_manager) {
+  MessageManager<::apollo::canbus::%(car_type_cap)s> *const message_manager) {
   if (is_initialized_) {
     AINFO << "%(car_type_cap)sController has already been initiated.";
     return ErrorCode::CANBUS_ERROR;
@@ -73,9 +77,8 @@ ErrorCode %(car_type_cap)sController::Init(
 
   // sender part
 %(protocol_ptr_get_list)s
-%(protocol_add_list)s
+  AddSendMessage();
 
-  // need sleep to ensure all messages received
   AINFO << "%(car_type_cap)sController is initialized.";
 
   is_initialized_ = true;
@@ -110,20 +113,20 @@ void %(car_type_cap)sController::Stop() {
 
 Chassis %(car_type_cap)sController::chassis() {
   chassis_.Clear();
+  %(car_type_cap)s chassis_detail = GetNewRecvChassisDetail();;
 
-  %(car_type_cap)s chassis_detail;
-  message_manager_->GetSensorData(&chassis_detail);
-
-  // 21, 22, previously 1, 2
+  // 1, 2
   // if (driving_mode() == Chassis::EMERGENCY_MODE) {
   //   set_chassis_error_code(Chassis::NO_ERROR);
   // }
 
   chassis_.set_driving_mode(driving_mode());
   chassis_.set_error_code(chassis_error_code());
+
   // 3
   chassis_.set_engine_started(true);
-  %(protocol_chassis_get_list)s
+
+  // check chassis error
   if (CheckChassisError()) {
     chassis_.mutable_engage_advice()->set_advice(
         apollo::common::EngageAdvice::DISALLOW_ENGAGE);
@@ -131,10 +134,29 @@ Chassis %(car_type_cap)sController::chassis() {
         "Chassis has some fault, please check the chassis_detail.");
   }
 
+  // check the chassis detail lost
+  if (is_chassis_communication_error_) {
+    chassis_.mutable_engage_advice()->set_advice(
+        apollo::common::EngageAdvice::DISALLOW_ENGAGE);
+    chassis_.mutable_engage_advice()->set_reason(
+        "%(car_type_lower)s chassis detail is lost! Please check the communication error.");
+    set_chassis_error_code(Chassis::CHASSIS_CAN_LOST);
+    set_driving_mode(Chassis::EMERGENCY_MODE);
+  }
+
   /* ADD YOUR OWN CAR CHASSIS OPERATION
-  // 10 battery soc
-  // 11 vin
-  // 12 bumper event
+  // 5 wheel spd
+  // 6 speed_mps
+  // 9 throttle
+  // 10 brake
+  // 11 gear
+  // 12 steering
+  // 13 parking brake
+  // 14 battery soc
+  // 16 sonor list
+  // 17 set vin
+  // 18,19 bumper event
+  // 20 add checkresponse signal
   */
 
   return chassis_;
@@ -151,7 +173,7 @@ ErrorCode %(car_type_cap)sController::EnableAutoMode() {
     return ErrorCode::OK;
   }
   // set enable
-  %(protocol_auto_enable_add_list)s
+  /* ADD YOUR OWN CAR CHASSIS OPERATION
 
   can_sender_->Update();
   const int32_t flag =
@@ -165,6 +187,8 @@ ErrorCode %(car_type_cap)sController::EnableAutoMode() {
   }
   set_driving_mode(Chassis::COMPLETE_AUTO_DRIVE);
   AINFO << "Switch to COMPLETE_AUTO_DRIVE mode ok.";
+  return ErrorCode::OK;
+  */
   return ErrorCode::OK;
 }
 
@@ -184,10 +208,9 @@ ErrorCode %(car_type_cap)sController::EnableSteeringOnlyMode() {
     AINFO << "Already in AUTO_STEER_ONLY mode.";
     return ErrorCode::OK;
   }
-  /* ADD YOUR OWN CAR CHASSIS OPERATION
   // TODO(ALL): CHECK YOUR VEHICLE WHETHER SUPPORT THIS MODE OR NOT
   // set enable
-  %(protocol_steer_enable_add_list)s
+  /* ADD YOUR OWN CAR CHASSIS OPERATION
 
   can_sender_->Update();
   if (!CheckResponse(CHECK_RESPONSE_STEER_UNIT_FLAG, true)) {
@@ -210,10 +233,9 @@ ErrorCode %(car_type_cap)sController::EnableSpeedOnlyMode() {
     AINFO << "Already in AUTO_SPEED_ONLY mode";
     return ErrorCode::OK;
   }
-  /* ADD YOUR OWN CAR CHASSIS OPERATION
   // TODO(ALL): CHECK YOUR VEHICLE WHETHER SUPPORT THIS MODE OR NOT
   // set enable
-  %(protocol_speed_enable_add_list)s
+  /* ADD YOUR OWN CAR CHASSIS OPERATION
 
   can_sender_->Update();
   if (!CheckResponse(CHECK_RESPONSE_SPEED_UNIT_FLAG, true)) {
@@ -236,7 +258,8 @@ void %(car_type_cap)sController::Gear(Chassis::GearPosition gear_position) {
     AINFO << "This drive mode no need to set gear.";
     return;
   }
-  %(protocol_gear_command_list)s
+  /* ADD YOUR OWN CAR CHASSIS OPERATION
+  */
 }
 
 // brake with pedal
@@ -249,7 +272,8 @@ void %(car_type_cap)sController::Brake(double pedal) {
     AINFO << "The current drive mode does not need to set brake pedal.";
     return;
   }
-  %(protocol_brake_command_list)s
+  /* ADD YOUR OWN CAR CHASSIS OPERATION
+  */
 }
 
 // drive with pedal
@@ -260,16 +284,30 @@ void %(car_type_cap)sController::Throttle(double pedal) {
     AINFO << "The current drive mode does not need to set throttle pedal.";
     return;
   }
-  %(protocol_throttle_command_list)s
+  /* ADD YOUR OWN CAR CHASSIS OPERATION
+  */
 }
 
 // confirm the car is driven by acceleration command instead of
 // throttle/brake pedal drive with acceleration/deceleration acc:-7.0 ~ 5.0,
 // unit:m/s^2
 void %(car_type_cap)sController::Acceleration(double acc) {
-  if (driving_mode() != Chassis::COMPLETE_AUTO_DRIVE ||
+  if (driving_mode() != Chassis::COMPLETE_AUTO_DRIVE &&
       driving_mode() != Chassis::AUTO_SPEED_ONLY) {
     AINFO << "The current drive mode does not need to set acceleration.";
+    return;
+  }
+  /* ADD YOUR OWN CAR CHASSIS OPERATION
+  // TODO(ALL): CHECK YOUR VEHICLE WHETHER SUPPORT THIS DRIVE MODE
+  */
+}
+
+// confirm the car is driven by speed command
+// speed:-xx.0~xx.0, unit:m/s
+void %(car_type_cap)sController::Speed(double speed) {
+  if (driving_mode() != Chassis::COMPLETE_AUTO_DRIVE &&
+      driving_mode() != Chassis::AUTO_SPEED_ONLY) {
+    AINFO << "The current drive mode does not need to set speed.";
     return;
   }
   /* ADD YOUR OWN CAR CHASSIS OPERATION
@@ -287,10 +325,11 @@ void %(car_type_cap)sController::Steer(double angle) {
     AINFO << "The current driving mode does not need to set steer.";
     return;
   }
-  %(protocol_steer_command_list)s
+  /* ADD YOUR OWN CAR CHASSIS OPERATION
+  */
 }
 
-// %(car_type_lower)s default, steering with new angle speed
+// %(car_type_lower)s default, steering with new angle and angle speed
 // angle:99.99~0.00~-99.99, unit:deg, left:+, right:-
 // angle_spd:0.00~99.99, unit:deg/s
 void %(car_type_cap)sController::Steer(double angle, double angle_spd) {
@@ -299,32 +338,40 @@ void %(car_type_cap)sController::Steer(double angle, double angle_spd) {
     AINFO << "The current driving mode does not need to set steer.";
     return;
   }
-  %(protocol_steer_command_list)s
+  /* ADD YOUR OWN CAR CHASSIS OPERATION
+  */
 }
 
 void %(car_type_cap)sController::SetEpbBreak(const ControlCommand& command) {
   if (command.parking_brake()) {
-    // None
+    /* ADD YOUR OWN CAR CHASSIS OPERATION
+    */
   } else {
-    // None
+    /* ADD YOUR OWN CAR CHASSIS OPERATION
+    */
   }
 }
 
 void %(car_type_cap)sController::SetBeam(const VehicleSignal& vehicle_signal) {
   if (vehicle_signal.high_beam()) {
-    // None
+    /* ADD YOUR OWN CAR CHASSIS OPERATION
+    */
   } else if (vehicle_signal.low_beam()) {
-    // None
+    /* ADD YOUR OWN CAR CHASSIS OPERATION
+    */
   } else {
-    // None
+    /* ADD YOUR OWN CAR CHASSIS OPERATION
+    */
   }
 }
 
 void %(car_type_cap)sController::SetHorn(const VehicleSignal& vehicle_signal) {
   if (vehicle_signal.horn()) {
-    // None
+    /* ADD YOUR OWN CAR CHASSIS OPERATION
+    */
   } else {
-    // None
+    /* ADD YOUR OWN CAR CHASSIS OPERATION
+    */
   }
 }
 
@@ -333,11 +380,11 @@ void %(car_type_cap)sController::SetTurningSignal(const VehicleSignal& vehicle_s
   /* ADD YOUR OWN CAR CHASSIS OPERATION
   auto signal = vehicle_signal.turn_signal();
   if (signal == common::VehicleSignal::TURN_LEFT) {
-    turnsignal_68_->set_turn_left();
+
   } else if (signal == common::VehicleSignal::TURN_RIGHT) {
-    turnsignal_68_->set_turn_right();
+
   } else {
-    turnsignal_68_->set_turn_none();
+
   }
   */
 }
@@ -398,19 +445,9 @@ void %(car_type_cap)sController::ResetProtocol() {
 }
 
 bool %(car_type_cap)sController::CheckChassisError() {
-  %(car_type_cap)s chassis_detail;
-  if (message_manager_->GetSensorData(&chassis_detail) != ErrorCode::OK) {
-    AERROR_EVERY(100) << "Get chassis detail failed.";
-  }
-  if (!chassis_.has_check_response()) {
+  if (is_chassis_communication_error_) {
     AERROR_EVERY(100) << "ChassisDetail has no %(car_type_lower)s vehicle info.";
-    chassis_.mutable_engage_advice()->set_advice(
-        apollo::common::EngageAdvice::DISALLOW_ENGAGE);
-    chassis_.mutable_engage_advice()->set_reason(
-        "ChassisDetail has no %(car_type_lower)s vehicle info.");
     return false;
-  } else {
-    chassis_.clear_engage_advice();
   }
 
   /* ADD YOUR OWN CAR CHASSIS OPERATION
@@ -476,11 +513,19 @@ void %(car_type_cap)sController::SecurityDogThreadFunc() {
       emergency_mode = true;
     }
 
+    // process emergency_mode
     if (emergency_mode && mode != Chassis::EMERGENCY_MODE) {
       set_driving_mode(Chassis::EMERGENCY_MODE);
       message_manager_->ResetSendMessages();
       can_sender_->Update();
     }
+
+    // recove error code
+    if (!emergency_mode && !is_chassis_communication_error_ &&
+        mode == Chassis::EMERGENCY_MODE) {
+      set_chassis_error_code(Chassis::NO_ERROR);
+    }
+
     end = ::apollo::cyber::Time::Now().ToMicrosecond();
     std::chrono::duration<double, std::micro> elapsed{end - start};
     if (elapsed < default_period) {
@@ -528,9 +573,14 @@ bool %(car_type_cap)sController::CheckResponse(const int32_t flags, bool need_wa
     }
   } while (need_wait && retry_num);
 
-  AERROR << "check_response fail: is_eps_online:" << is_eps_online
-        << ", is_vcu_online:" << is_vcu_online
-        << ", is_esp_online:" << is_esp_online;
+  if (flags & CHECK_RESPONSE_STEER_UNIT_FLAG) {
+    AERROR << "steer check_response fail: is_eps_online:" << is_eps_online;
+  }
+
+  if (flags & CHECK_RESPONSE_SPEED_UNIT_FLAG) {
+    AERROR << "speed check_response fail: " << "is_vcu_online:" << is_vcu_online
+           << ", is_esp_online:" << is_esp_online;
+  }
 
   return false;
 }

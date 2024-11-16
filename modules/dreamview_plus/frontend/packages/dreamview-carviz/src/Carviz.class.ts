@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import noop from 'lodash/noop';
-import { LocalStorage, KEY_MANAGER } from '@dreamview/dreamview-core/src/util/storageManager';
+import { DreamviewAnalysis, perfMonitor } from '@dreamview/dreamview-analysis';
 import View from './render/view';
 import Map from './render/map';
 import Adc from './render/adc';
@@ -23,6 +23,7 @@ import PathwayMarker from './render/functional/PathwayMarker';
 import CopyMarker from './render/functional/CopyMarker';
 import RulerMarker from './render/functional/RulerMarker';
 import Follow from './render/follow';
+import { checkWebGLSupport, checkWebGPUSupport } from './utils/checkSupport';
 
 enum PREVDATA_STATUS {
     EXIT = 'EXIT',
@@ -92,24 +93,139 @@ export class Carviz {
 
     public follow: Follow;
 
+    private colors = {
+        bgColor: '#0f1014',
+        textColor: '#ffea00',
+        colorMapping: {
+            YELLOW: '#daa520',
+            WHITE: '#cccccc',
+            CORAL: '#ff7f50',
+            RED: '#ff6666',
+            GREEN: '#006400',
+            BLUE: '#30a5ff',
+            PURE_WHITE: '#ffffff',
+            DEFAULT: '#c0c0c0',
+            MIDWAY: '#ff7f50',
+            END: '#ffdab9',
+            PULLOVER: '#006aff',
+        },
+        obstacleColorMapping: {
+            PEDESTRIAN: '#ffea00',
+            BICYCLE: '#00dceb',
+            VEHICLE: '#00ff3c',
+            VIRTUAL: '#800000',
+            CIPV: '#ff9966',
+            DEFAULT: '#ff00fc',
+            TRAFFICCONE: '#e1601c',
+            UNKNOWN: '#a020f0',
+            UNKNOWN_MOVABLE: '#da70d6',
+            UNKNOWN_UNMOVABLE: '#ff00ff',
+        },
+        decisionMarkerColorMapping: {
+            STOP: '#ff3030',
+            FOLLOW: '#1ad061',
+            YIELD: '#ff30f7',
+            OVERTAKE: '#30a5ff',
+        },
+        pointCloudHeightColorMapping: {
+            0.5: {
+                r: 255,
+                g: 0,
+                b: 0,
+            },
+            1.0: {
+                r: 255,
+                g: 127,
+                b: 0,
+            },
+            1.5: {
+                r: 255,
+                g: 255,
+                b: 0,
+            },
+            2.0: {
+                r: 0,
+                g: 255,
+                b: 0,
+            },
+            2.5: {
+                r: 0,
+                g: 0,
+                b: 255,
+            },
+            3.0: {
+                r: 75,
+                g: 0,
+                b: 130,
+            },
+            10.0: {
+                r: 148,
+                g: 0,
+                b: 211,
+            },
+        },
+    };
+
     private viewLocalStorage;
 
-    constructor(id) {
+    constructor(id, colors?) {
         this.canvasId = id;
         this.initialized = false;
+        if (colors) {
+            this.colors = colors;
+        }
     }
 
     render() {
+        perfMonitor.mark('carvizRenderStart');
         if (this.initialized) {
             this.view?.setView();
             this.renderer.render(this.scene, this.camera);
+
+            DreamviewAnalysis.logData('renderer', {
+                // 渲染次数
+                calls: this.renderer.info.render.calls,
+                // 帧数
+                frame: this.renderer.info.render.frame,
+            });
+            DreamviewAnalysis.logData(
+                'renderer',
+                {
+                    // 三角面片数
+                    triangles: this.renderer.info.render.triangles,
+                    // 几何体数量
+                    geometries: this.renderer.info.memory.geometries,
+                    // 纹理数量
+                    textures: this.renderer.info.memory.textures,
+                },
+                {
+                    useStatistics: {
+                        useMax: true,
+                    },
+                },
+            );
+            DreamviewAnalysis.logData(
+                'scene',
+                {
+                    // 场景对象数量
+                    objects: this.scene.children.length,
+                },
+                {
+                    useStatistics: {
+                        useMax: true,
+                    },
+                },
+            );
+
             this.CSS2DRenderer.render(this.scene, this.camera);
         }
+        perfMonitor.mark('carvizRenderEnd');
+        perfMonitor.measure('carvizRender', 'carvizRenderStart', 'carvizRenderEnd');
     }
 
     updateDimention() {
         this.camera.aspect = this.width / this.height;
-        this.camera.updateProjectionMatrix();
+        this.camera?.updateProjectionMatrix();
         this.renderer.setSize(this.width, this.height);
         this.CSS2DRenderer.setSize(this.width, this.height);
         this.render();
@@ -142,14 +258,26 @@ export class Carviz {
     initThree() {
         this.scene = new THREE.Scene();
 
-        this.renderer = new THREE.WebGLRenderer({
-            alpha: true,
-            antialias: true,
-        });
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.setSize(this.width, this.height);
-        this.renderer.setClearColor(0x0f1014);
-        this.canvasDom.appendChild(this.renderer.domElement);
+        const webgpuAvailable = checkWebGPUSupport();
+        const webglAvailable = checkWebGLSupport();
+
+        if (webglAvailable) {
+            this.renderer = new THREE.WebGLRenderer({
+                alpha: true,
+                antialias: true,
+            });
+            // 启用场景中的阴影自动更新。默认是true,如果不需要动态光照/阴影, 则可以在实例化渲染器时将之设为false
+            this.renderer.shadowMap.autoUpdate = false;
+            // 如果为true，定义是否检查材质着色器程序 编译和链接过程中的错误。 禁用此检查生产以获得性能增益可能很有用。
+            this.renderer.debug.checkShaderErrors = false;
+            this.renderer.setPixelRatio(window.devicePixelRatio);
+            this.renderer.setSize(this.width, this.height);
+            this.renderer.setClearColor(this.colors.bgColor);
+            this.canvasDom.appendChild(this.renderer.domElement);
+        } else {
+            this.renderer = {};
+            this.handleNoSupport(); // 处理不支持的情况
+        }
 
         this.camera = new THREE.PerspectiveCamera(
             cameraParams.Default.fov,
@@ -176,6 +304,9 @@ export class Carviz {
             this.view?.setView();
             this.render();
         });
+        this.controls.minDistance = 2;
+        this.controls.minPolarAngle = 0;
+        this.controls.maxPolarAngle = Math.PI / 2;
         this.controls.keys = {
             LEFT: 'ArrowLeft',
             UP: 'ArrowUp',
@@ -198,6 +329,11 @@ export class Carviz {
         this.render();
     }
 
+    updateColors(color) {
+        this.colors = color;
+        this.renderer.setClearColor(color.bgColor);
+    }
+
     initCSS2DRenderer() {
         this.CSS2DRenderer = new CSS2DRenderer();
         this.CSS2DRenderer.setSize(this.width, this.height);
@@ -213,12 +349,12 @@ export class Carviz {
         this.adc = new Adc(this.scene, this.option, this.coordinates);
         this.view = new View(this.camera, this.controls, this.adc);
         this.text = new Text(this.camera);
-        this.map = new Map(this.scene, this.text, this.option, this.coordinates);
-        this.obstacles = new Obstacles(this.scene, this.view, this.text, this.option, this.coordinates);
-        this.pointCloud = new PointCloud(this.scene, this.adc, this.option);
+        this.map = new Map(this.scene, this.text, this.option, this.coordinates, this.colors);
+        this.obstacles = new Obstacles(this.scene, this.view, this.text, this.option, this.coordinates, this.colors);
+        this.pointCloud = new PointCloud(this.scene, this.adc, this.option, this.colors);
         this.routing = new Routing(this.scene, this.option, this.coordinates);
-        this.decision = new Decision(this.scene, this.option, this.coordinates);
-        this.prediction = new Prediction(this.scene, this.option, this.coordinates);
+        this.decision = new Decision(this.scene, this.option, this.coordinates, this.colors);
+        this.prediction = new Prediction(this.scene, this.option, this.coordinates, this.colors);
         this.planning = new Planning(this.scene, this.option, this.coordinates);
         this.gps = new Gps(this.scene, this.adc, this.option, this.coordinates);
         this.follow = new Follow(this.scene, this.coordinates);
@@ -331,7 +467,7 @@ export class Carviz {
             datas,
             'autoDrivingCar',
             () => {
-                this.adc.update(datas.autoDrivingCar, 'adc');
+                this.adc.update({ ...datas.autoDrivingCar, boudingBox: datas.boudingBox }, 'adc');
             },
             noop,
         );
@@ -463,5 +599,23 @@ export class Carviz {
         this.pathwayMarker.deactive();
         this.copyMarker.deactive();
         this.rulerMarker.deactive();
+    }
+
+    handleNoSupport() {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'absolute';
+        errorDiv.style.top = '50%';
+        errorDiv.style.left = '50%';
+        errorDiv.style.transform = 'translate(-50%, -50%)';
+        errorDiv.style.fontSize = '20px';
+        errorDiv.style.color = 'red';
+        errorDiv.innerText =
+            'Your browser may not support WebGL or WebGPU. If you are using Firefox, to enable WebGL, please type webgl.disabled into the search box on the about:config page and set it to false.';
+        document.body.appendChild(errorDiv);
+
+        // 可能还需要禁用或移除画布等
+        if (this.canvasDom) {
+            this.canvasDom.style.display = 'none';
+        }
     }
 }

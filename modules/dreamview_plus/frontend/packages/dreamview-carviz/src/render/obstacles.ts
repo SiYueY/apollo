@@ -1,10 +1,13 @@
 import * as THREE from 'three';
-import { camelCase } from 'lodash';
+import { camelCase, memoize } from 'lodash';
+import { perfMonitor } from '@dreamview/dreamview-analysis';
 import { obstacleColorMapping } from '../constant/common';
-import { disposeMesh, drawArrow, drawImge, disposeGroup, drawBox, drawDashedBox, drawSolidBox } from '../utils/common';
+import { disposeMesh, drawImge, disposeGroup, drawDashedBox, drawSolidBox } from '../utils/common';
 import iconObjectYield from '../../assets/images/decision/object-yield.png';
+import ThreeObjectPool from '../utils/ThreeObjectPool';
 
 const DEFAULT_HEIGHT = 1.5;
+
 enum ObjectType {
     UNKNOWN = 0,
     UNKNOWN_MOVABLE = 1,
@@ -15,6 +18,7 @@ enum ObjectType {
     VIRTUAL = 6,
     CIPV = 7,
 }
+
 function getSensorType(key) {
     if (key.search('radar') !== -1) {
         return 'RadarSensor';
@@ -26,6 +30,16 @@ function getSensorType(key) {
         return 'CameraSensor';
     }
     return null;
+}
+
+const memoizeGetSensorType = memoize(getSensorType);
+
+enum POOL_TYPE {
+    ARROW = 'ARROW',
+    BIG_ARROW = 'BIG_ARROW',
+    ICON = 'ICON',
+    LINE_LOOP = 'LINE_LOOP',
+    LINE_DASH = 'LINE_DASH',
 }
 export default class Obstacles {
     private obstacleMeshs;
@@ -54,7 +68,14 @@ export default class Obstacles {
 
     private memo;
 
-    constructor(scene, view, text, option, coordinates) {
+    private colors;
+
+    private iconObjectPool: ThreeObjectPool<THREE.Mesh>;
+
+    private updatedTexureId: string;
+
+    constructor(scene, view, text, option, coordinates, colors?) {
+        this.colors = colors;
         this.memo = new Map();
         this.scene = scene;
         this.view = view;
@@ -68,8 +89,14 @@ export default class Obstacles {
         this.iconMeshs = [];
         this.iconMeshTemplate = null;
         this.solidFaceCubeMeshTemplate = null;
-        this.drawIconMeshTemplate();
         this.drawCubeTemplate();
+        this.iconObjectPool = new ThreeObjectPool({
+            type: POOL_TYPE.ICON,
+            syncFactory: () => drawImge(iconObjectYield, 1, 1),
+            dispose: (object) => (object.visible = false),
+            reset: (object) => (object.visible = true),
+        });
+        this.updatedTexureId = null;
     }
 
     getMemo(id, sceneName, init) {
@@ -87,32 +114,8 @@ export default class Obstacles {
         return this.memo.get(sceneName).get(id);
     }
 
-    getObstacleHeadingMemo(id, init) {
-        return this.getMemo(id, 'obstacleheadingMemo', init);
-    }
-
-    getSpeedHeadingMemo(id, init) {
-        return this.getMemo(id, 'speedheadingMemo', init);
-    }
-
     getTrafficConeMemo(id, init) {
         return this.getMemo(id, 'trafficConeMemo', init);
-    }
-
-    getBottomFaceMemo(id, init) {
-        return this.getMemo(id, 'bottomFaceMemo', init);
-    }
-
-    getTopFaceMemo(id, init) {
-        return this.getMemo(id, 'topFaceMemo', init);
-    }
-
-    getSolidTopFaceMemo(id, init) {
-        return this.getMemo(id, 'solidFaceMemo', init);
-    }
-
-    getDashTopFaceMemo(id, init) {
-        return this.getMemo(id, 'dashTopFaceMemo', init);
     }
 
     getStaticColorMaterial(id, init) {
@@ -123,46 +126,71 @@ export default class Obstacles {
         return this.getMemo(id, 'staticDashMateria', init);
     }
 
-    getV2xCubeMemo(id, init) {
-        return this.getMemo(id, 'V2xCubeMemo', init);
+    getObstacleHeadingPath(obstacle) {
+        const length = 1.5;
+        const arrowLength = 0.5;
+        const { height, positionX, positionY, heading } = obstacle;
+        if (!positionX || !positionY) {
+            return [];
+        }
+        const begin = new THREE.Vector3(
+            this.coordinates.applyOffset({ x: positionX, y: positionY }).x,
+            this.coordinates.applyOffset({ x: positionX, y: positionY }).y,
+            (height || DEFAULT_HEIGHT) / 2,
+        );
+        const end = new THREE.Vector3(
+            begin.x + length * Math.cos(heading),
+            begin.y + length * Math.sin(heading),
+            (height || DEFAULT_HEIGHT) / 2,
+        );
+        const temp = new THREE.Vector3(
+            begin.x + (length - arrowLength) * Math.cos(heading),
+            begin.y + (length - arrowLength) * Math.sin(heading),
+            (height || DEFAULT_HEIGHT) / 2,
+        );
+        // 计算沿着end - temp方向，长度为0.5的箭头的两个端点
+        const endToTempVec = new THREE.Vector3().subVectors(temp, end);
+        const newVec1 = endToTempVec.clone().applyEuler(new THREE.Euler(0, 0, Math.PI / 6));
+        const newVec2 = endToTempVec.clone().applyEuler(new THREE.Euler(0, 0, -Math.PI / 6));
+        const top = new THREE.Vector3(newVec1.x + end.x, newVec1.y + end.y, (height || DEFAULT_HEIGHT) / 2);
+        const bottom = new THREE.Vector3(newVec2.x + end.x, newVec2.y + end.y, (height || DEFAULT_HEIGHT) / 2);
+        return [begin, end, top, end, bottom, end];
     }
 
-    getCubeMemo(id, init) {
-        return this.getMemo(id, 'cubeMemo', init);
-    }
-
-    getIconMemo(id, init) {
-        return this.getMemo(id, 'iconMemo', init);
-    }
-
-    getSegmentMesh(id, init) {
-        return this.getMemo(id, 'segmentMeshMemo', init);
-    }
-
-    getSegmentDashMesh(id, init) {
-        return this.getMemo(id, 'segmentDashMeshMemo', init);
-    }
-
-    drawObstacleHeading(obstacle) {
-        const { height, positionX, positionY, heading, id } = obstacle;
-        const position = this.coordinates.applyOffset({ x: positionX, y: positionY });
-        const color = 0xffffff;
-        const arrowMesh = this.getObstacleHeadingMemo(id, () => drawArrow(color));
-        arrowMesh.rotation.z = heading;
-        arrowMesh.position.set(position.x, position.y, (height || DEFAULT_HEIGHT) / 2);
-        return arrowMesh;
-    }
-
-    drawSpeedHeading(obstacle) {
-        const { height, positionX, positionY, type, speedHeading, speed, id } = obstacle;
-        const position = this.coordinates.applyOffset({ x: positionX, y: positionY });
-        const color = obstacleColorMapping[type] || obstacleColorMapping.DEFAULT;
-        const arrowMesh = this.getSpeedHeadingMemo(id, () => drawArrow(color));
-        arrowMesh.rotation.z = speedHeading;
+    getSpeedHeadingPath(obstacle) {
+        const { height, positionX, positionY, speedHeading, speed } = obstacle;
+        if (!positionX || !positionY || speedHeading === undefined || !speed) {
+            return [];
+        }
+        if (!speedHeading || speed === undefined) {
+            return [];
+        }
         const scale = 1 + Math.log2(speed);
-        arrowMesh.scale.set(scale, scale, scale);
-        arrowMesh.position.set(position.x, position.y, (height || DEFAULT_HEIGHT) / 2);
-        return arrowMesh;
+        const length = 1.5 * scale;
+        const arrowLength = 0.5;
+        const begin = new THREE.Vector3(
+            this.coordinates.applyOffset({ x: positionX, y: positionY }).x,
+            this.coordinates.applyOffset({ x: positionX, y: positionY }).y,
+            (height || DEFAULT_HEIGHT) / 2,
+        );
+        const end = new THREE.Vector3(
+            begin.x + length * Math.cos(speedHeading),
+            begin.y + length * Math.sin(speedHeading),
+            (height || DEFAULT_HEIGHT) / 2,
+        );
+
+        const temp = new THREE.Vector3(
+            begin.x + (length - arrowLength) * Math.cos(speedHeading),
+            begin.y + (length - arrowLength) * Math.sin(speedHeading),
+            (height || DEFAULT_HEIGHT) / 2,
+        );
+        // 计算沿着end - begin方向，长度为0.5的箭头的两个端点
+        const endToTempVec = new THREE.Vector3().subVectors(temp, end);
+        const newVec1 = endToTempVec.clone().applyEuler(new THREE.Euler(0, 0, Math.PI / 4));
+        const newVec2 = endToTempVec.clone().applyEuler(new THREE.Euler(0, 0, -Math.PI / 4));
+        const top = new THREE.Vector3(newVec1.x + temp.x, newVec1.y + temp.y, (height || DEFAULT_HEIGHT) / 2);
+        const bottom = new THREE.Vector3(newVec2.x + temp.x, newVec2.y + temp.y, (height || DEFAULT_HEIGHT) / 2);
+        return [begin, end, top, end, bottom, end];
     }
 
     drawTrafficCone(obstacle) {
@@ -171,7 +199,7 @@ export default class Obstacles {
         const mesh = this.getTrafficConeMemo(id, () => {
             const geometry = new THREE.CylinderGeometry(0.1, 0.25, 0.914, 32);
             const material = new THREE.MeshBasicMaterial({
-                color: obstacleColorMapping.TRAFFICCONE,
+                color: this.colors.obstacleColorMapping.TRAFFICCONE,
                 transparent: true,
                 opacity: 0.64,
             });
@@ -183,10 +211,28 @@ export default class Obstacles {
         return mesh;
     }
 
-    update(obstacles, measurements, autoDrivingCar) {
+    update(obstacles, sensorMeasurements, autoDrivingCar) {
+        let objects = [];
+        perfMonitor.mark('obstaclesUpdateStart');
         this.dispose();
-        this.updateObstacles(obstacles, autoDrivingCar);
-        this.updateSensorMeasurements(measurements);
+        const { lidar, radar, camera } = this.option.layerOption.Perception;
+        if (sensorMeasurements && (lidar || radar || camera)) {
+            Object.keys(sensorMeasurements).forEach((key) => {
+                const sensorType = memoizeGetSensorType(key.toLowerCase());
+                if (!sensorType || !this.option.layerOption.Perception[sensorType]) {
+                    return;
+                }
+                const measurements = sensorMeasurements[key]?.sensorMeasurement;
+                if (!measurements || measurements.length === 0) {
+                    return;
+                }
+                objects = [...objects, ...measurements];
+            });
+        }
+        objects = [...objects, ...obstacles];
+        this.updateObstacles(objects, autoDrivingCar);
+        perfMonitor.mark('obstaclesUpdateEnd');
+        perfMonitor.measure('obstaclesUpdate', 'obstaclesUpdateStart', 'obstaclesUpdateEnd');
     }
 
     updateObstacles(obstacles, autoDrivingCar) {
@@ -194,237 +240,203 @@ export default class Obstacles {
             return;
         }
         const { obstacleHeading, obstacleDistanceAndSpeed } = this.option.layerOption.Perception;
+        const paths = [];
+        const colors = [];
+        let texts: { str: string; position: THREE.Vector3 }[] = [];
         for (let i = 0; i < obstacles.length; i += 1) {
             const obstacle = obstacles[i];
-            const { positionX, positionY, yieldedobstacle, type, id } = obstacle;
-            if (!positionX || !positionY) {
+            const {
+                positionX,
+                positionY,
+                yieldedobstacle,
+                type,
+                id,
+                polygonPoint,
+                source,
+                confidence,
+                height,
+                length,
+                width,
+            } = obstacle;
+            if ((!positionX && !positionY) || !this.option.layerOption.Perception[camelCase(type)]) {
                 continue;
             }
-            if (!this.option.layerOption.Perception[camelCase(type)]) {
-                continue;
+            const actHeight = source === 'v2x' ? height : confidence < 1 ? confidence * height : height;
+            const color = this.colors.obstacleColorMapping[type] || this.colors.obstacleColorMapping.DEFAULT;
+            if (polygonPoint && polygonPoint.length !== 0) {
+                const bottomPoints = this.coordinates.applyOffsetToArray(polygonPoint);
+                const topPoints = bottomPoints.map((point) => ({
+                    x: point.x,
+                    y: point.y,
+                    z: point.z + actHeight,
+                }));
+                for (let i = 0; i < bottomPoints.length - 1; i += 1) {
+                    paths.push(bottomPoints[i], bottomPoints[i + 1]);
+                    paths.push(bottomPoints[i], topPoints[i]);
+                }
+                paths.push(bottomPoints[bottomPoints.length - 1], bottomPoints[0]);
+                paths.push(bottomPoints[bottomPoints.length - 1], topPoints[topPoints.length - 1]);
+
+                for (let i = 0; i < topPoints.length - 1; i += 1) {
+                    paths.push(topPoints[i], topPoints[i + 1]);
+                }
+                paths.push(topPoints[topPoints.length - 1], topPoints[0]);
+
+                for (let i = 0; i < bottomPoints.length * 3; i += 1) {
+                    const { r, g, b } = new THREE.Color(color);
+                    colors.push(r, g, b, r, g, b);
+                }
+                if (obstacleHeading) {
+                    const arrowPaths = this.getObstacleHeadingPath(obstacle);
+                    if (arrowPaths.length) {
+                        paths.push(...arrowPaths);
+                        const { r, g, b } = new THREE.Color(0xffffff);
+                        colors.push(r, g, b, r, g, b, r, g, b, r, g, b, r, g, b, r, g, b);
+                    }
+                }
+
+                if (obstacleDistanceAndSpeed) {
+                    const speedArrowPath = this.getSpeedHeadingPath(obstacle);
+                    if (speedArrowPath.length) {
+                        paths.push(...speedArrowPath);
+                        const { r, g, b } = new THREE.Color(color);
+                        colors.push(r, g, b, r, g, b, r, g, b, r, g, b, r, g, b, r, g, b);
+                    }
+                }
+                if (yieldedobstacle) {
+                    const icon = this.iconObjectPool.acquireSync();
+                    const position = this.coordinates.applyOffset({
+                        x: positionX,
+                        y: positionY,
+                        z: (obstacle.height || DEFAULT_HEIGHT) + 0.5,
+                    });
+                    icon.position.set(position.x, position.y, position.z);
+                    if (this.scene.children.indexOf(icon) === -1) {
+                        this.scene.add(icon);
+                    }
+                    this.iconMeshs.push(icon);
+                }
             }
 
-            const mesh = this.drawObstacle(obstacle);
-            if (!mesh) {
-                return;
+            let mesh = null;
+            if (obstacle.subType === 'ST_TRAFFICCONE') {
+                mesh = this.drawTrafficCone(obstacle);
+            } else if (length && width && height && this.option.layerOption.Perception.boundingbox) {
+                if (source === 'v2x') {
+                    mesh = this.drawV2xCube(obstacle);
+                } else {
+                    mesh = this.drawCube(obstacle);
+                }
             }
             if (mesh) {
                 this.scene.add(mesh);
                 this.obstacleMeshs.push(mesh);
             }
+            const textsInfo = this.getTexts(obstacle, autoDrivingCar);
+            texts = texts.concat(textsInfo);
+        }
+        if (paths.length && colors.length) {
+            const geometry = new THREE.BufferGeometry().setFromPoints(paths);
+            const material = new THREE.LineBasicMaterial({ transparent: true, vertexColors: true });
+            geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+            geometry.getAttribute('color').needsUpdate = true;
+            geometry.getAttribute('position').needsUpdate = true;
+            const obstacleLineSegments = new THREE.LineSegments(geometry, material);
+            this.obstacleMeshs.push(obstacleLineSegments);
+            this.scene.add(obstacleLineSegments);
+        }
 
-            if (obstacleHeading) {
-                const obstacleHeadingArrow = this.drawObstacleHeading(obstacle);
-                if (obstacleHeadingArrow) {
-                    this.obstacleHeadingArrows.push(obstacleHeadingArrow);
-                    this.scene.add(obstacleHeadingArrow);
-                }
-            }
-
-            if (obstacleDistanceAndSpeed) {
-                const speedHeadingArrow = this.drawSpeedHeading(obstacle);
-                if (speedHeadingArrow) {
-                    this.speedHeadingArrows.push(speedHeadingArrow);
-                    this.scene.add(speedHeadingArrow);
-                }
-            }
-            if (yieldedobstacle) {
-                const icon = this.getIconMemo(id, () => {
-                    return this.iconMeshTemplate.clone();
+        if (texts.length) {
+            this.updatedTexureId = `textTexture${new Date().getTime()}`;
+            const { texture, canvasWidth, canvasHeight, positionItems } = this.generateTextCanvas(
+                texts,
+                this.colors.textColor,
+            );
+            texture.uuid = this.updatedTexureId;
+            const lineLength = positionItems[positionItems.length - 1].lineNum + 1;
+            texts.forEach((item, index) => {
+                const itemTexture = texture.clone();
+                itemTexture.uuid = this.updatedTexureId;
+                itemTexture.offset.set(
+                    positionItems[index].start / canvasWidth,
+                    1 - (positionItems[index].lineNum + 1) / lineLength,
+                );
+                itemTexture.repeat.set(positionItems[index].width / canvasWidth, 1 / lineLength);
+                const material = new THREE.SpriteMaterial({
+                    map: itemTexture,
+                    transparent: true,
+                    depthTest: false,
                 });
-                const position = this.coordinates.applyOffset({
-                    x: positionX,
-                    y: positionY,
-                    z: (obstacle.height || DEFAULT_HEIGHT) + 0.5,
-                });
-                icon.position.set(position.x, position.y, position.z);
-                this.scene.add(icon);
-                this.iconMeshs.push(icon);
-            }
-            const texts = this.drawTexts(obstacle, autoDrivingCar);
-            texts.forEach((mesh) => {
-                this.textMeshs.push(mesh);
-                this.scene.add(mesh);
+                material.map.colorSpace = 'srgb';
+                const textMesh = new THREE.Sprite(material);
+                textMesh.scale.set(positionItems[index].width / 24, canvasHeight / lineLength / 24, 1);
+                textMesh.position.set(item.position.x, item.position.y, item.position.z);
+                this.textMeshs.push(textMesh);
+                this.scene.add(textMesh);
             });
         }
     }
 
-    updateSensorMeasurements(sensorMeasurements) {
-        if (!this.coordinates.isInitialized()) {
-            return;
+    releasePool(mesh) {
+        const type = mesh?.userData?.type;
+        if (type === POOL_TYPE.ICON) {
+            this.iconObjectPool.release(mesh);
         }
-        const { lidar, radar, camera, obstacleHeading } = this.option.layerOption.Perception;
-        if (!lidar && !radar && !camera) {
-            return;
-        }
-        if (!sensorMeasurements) {
-            return;
-        }
-        Object.keys(sensorMeasurements).forEach((key) => {
-            const sensorType = getSensorType(key.toLowerCase());
-            if (!sensorType || !this.option.layerOption.Perception[sensorType]) {
-                return;
-            }
-            const measurements = sensorMeasurements[key]?.sensorMeasurement;
-            if (!measurements || measurements.length === 0) {
-                return;
-            }
-            measurements.forEach((item) => {
-                if (!item.positionX || !item.positionY) {
-                    return;
-                }
-                if (obstacleHeading) {
-                    const obstacleHeadingArrow = this.drawObstacleHeading(item);
-                    this.obstacleHeadingArrows.push(obstacleHeadingArrow);
-                    this.scene.add(obstacleHeadingArrow);
-                }
-                const mesh = this.drawObstacle(item);
-                if (mesh) {
-                    this.scene.add(mesh);
-                    this.obstacleMeshs.push(mesh);
-                }
-            });
-        });
     }
 
     dispose() {
-        [
-            ...this.obstacleHeadingArrows,
-            ...this.speedHeadingArrows,
-            ...this.obstacleMeshs,
-            ...this.textMeshs,
-            ...this.iconMeshs,
-        ].forEach((mesh) => {
-            if (mesh.type === 'Group') {
-                disposeGroup(mesh);
-            } else {
-                disposeMesh(mesh);
+        const disposeMeshArray = (meshArray) => {
+            for (let i = 0; i < meshArray.length; i++) {
+                const mesh = meshArray[i];
+                if (mesh.type === 'Object3D') {
+                    disposeGroup(mesh);
+                    this.scene.remove(mesh);
+                } else if (mesh.type === 'Group') {
+                    disposeGroup(mesh);
+                    this.scene.remove(mesh);
+                    mesh.traverse((child) => {
+                        if (mesh?.userData?.type) {
+                            this.releasePool(mesh);
+                        } else {
+                            disposeMesh(child);
+                        }
+                    });
+                } else if (mesh?.userData?.type) {
+                    this.releasePool(mesh);
+                } else {
+                    disposeMesh(mesh);
+                    this.scene.remove(mesh);
+                }
             }
-            this.scene.remove(mesh);
-        });
-        this.speedHeadingArrows = [];
-        this.obstacleHeadingArrows = [];
+            meshArray.length = 0;
+        };
+
+        disposeMeshArray(this.obstacleHeadingArrows);
+        disposeMeshArray(this.speedHeadingArrows);
+        disposeMeshArray(this.obstacleMeshs);
+        disposeMeshArray(this.textMeshs);
+        disposeMeshArray(this.iconMeshs);
+
+        this.obstacleHeadingArrows.length = 0;
+        this.speedHeadingArrows.length = 0;
         this.obstacleMeshs = [];
-        this.iconMeshs = [];
-        this.textMeshs = [];
+        this.textMeshs.length = 0;
+        this.iconMeshs.length = 0;
+
+        // 重置相关对象
         this.text.reset();
     }
 
-    drawIconMeshTemplate() {
-        const mesh = drawImge(iconObjectYield, 1, 1);
-        this.iconMeshTemplate = mesh;
-    }
-
     drawCubeTemplate() {
-        const color = obstacleColorMapping.DEFAULT;
+        const color = this.colors.obstacleColorMapping.DEFAULT;
         const solidFaceCube = drawSolidBox(1, 1, 1, color);
         this.solidFaceCubeMeshTemplate = solidFaceCube;
     }
 
-    drawObstaclePolygon(obstacle) {
-        const { polygonPoint, height, confidence, source, type, id } = obstacle;
-        const bottomPoints = this.coordinates.applyOffsetToArray(polygonPoint);
-        const color = obstacleColorMapping[type] || obstacleColorMapping.DEFAULT;
-        const material = this.getStaticColorMaterial(color, () => {
-            return new THREE.LineBasicMaterial({
-                color,
-            });
-        });
-        const dashMaterial = this.getStaticDashMaterial(color, () => {
-            return new THREE.LineDashedMaterial({ color });
-        });
-        const isV2x = source === 'v2x';
-
-        const group = new THREE.Group();
-        // 绘制底面
-        const bottomFace = this.getBottomFaceMemo(id, () => {
-            const bottomGeometry = new THREE.BufferGeometry();
-            return new THREE.LineLoop(bottomGeometry, material);
-        });
-        bottomFace.geometry.setFromPoints(bottomPoints);
-        group.add(bottomFace);
-        if (isV2x) {
-            // 绘制顶面
-            const topPoints = bottomPoints.map((item) => new THREE.Vector3(item.x, item.y, item.z + height));
-            const topFace = this.getTopFaceMemo(id, () => {
-                const topGeometry = new THREE.BufferGeometry();
-                return new THREE.LineLoop(topGeometry, material);
-            });
-            topFace.geometry.setFromPoints(topPoints);
-            group.add(topFace);
-            // 绘制底面和顶面的连接线
-            for (let i = 0; i < topPoints.length; i += 1) {
-                const geometry = new THREE.BufferGeometry().setFromPoints([topPoints[i], bottomPoints[i]]);
-                const segmentMesh = new THREE.LineSegments(geometry, material);
-                group.add(segmentMesh);
-            }
-        } else {
-            // 绘制实部的顶面
-            const solidTopPoints = bottomPoints.map(
-                (item) => new THREE.Vector3(item.x, item.y, item.z + confidence * height),
-            );
-            const solidTopFace = this.getSolidTopFaceMemo(id, () => {
-                const solidTopGeometry = new THREE.BufferGeometry();
-                return new THREE.LineLoop(solidTopGeometry, material);
-            });
-            solidTopFace.geometry.setFromPoints(solidTopPoints);
-            group.add(solidTopFace);
-            // 绘制底面和实部顶面的连接线
-            for (let i = 0; i < solidTopPoints.length; i += 1) {
-                const segmentMesh = this.getSegmentMesh(`${id}_${i}`, () => {
-                    const geometry = new THREE.BufferGeometry();
-                    return new THREE.LineSegments(geometry, material);
-                });
-                segmentMesh.geometry.setFromPoints([solidTopPoints[i], bottomPoints[i]]);
-                group.add(segmentMesh);
-            }
-            if (confidence < 1) {
-                // 绘制虚部的顶面
-                const dashTopPoints = bottomPoints.map((item) => new THREE.Vector3(item.x, item.y, item.z + height));
-                const dashTopFace = this.getDashTopFaceMemo(id, () => {
-                    const dashTopGeometry = new THREE.BufferGeometry();
-                    return new THREE.LineLoop(dashTopGeometry, dashMaterial);
-                });
-                dashTopFace.geometry.setFromPoints(dashTopPoints);
-                group.add(dashTopFace);
-                // 绘制虚部顶部和实部顶面的虚线
-                for (let i = 0; i < solidTopPoints.length; i += 1) {
-                    const segmentMesh = this.getSegmentDashMesh(`${id}_${i}`, () => {
-                        const geometry = new THREE.BufferGeometry();
-                        return new THREE.LineSegments(geometry, dashMaterial);
-                    });
-                    segmentMesh.geometry.setFromPoints([dashTopPoints[i], solidTopPoints[i]]);
-                    group.add(segmentMesh);
-                }
-            }
-        }
-        return group;
-    }
-
-    drawObstacle(obstacle) {
-        const { polygonPoint, length, width, height, source } = obstacle;
-        const isV2x = source === 'v2x';
-        let mesh = null;
-        if (obstacle.subType === 'ST_TRAFFICCONE') {
-            mesh = this.drawTrafficCone(obstacle);
-        } else if (polygonPoint && polygonPoint.length > 0 && this.option.layerOption.Perception.polygon) {
-            mesh = this.drawObstaclePolygon(obstacle);
-        } else if (length && width && height && this.option.layerOption.Perception.boundingbox) {
-            if (isV2x) {
-                mesh = this.drawV2xCube(obstacle);
-            } else {
-                mesh = this.drawCube(obstacle);
-            }
-        }
-        return mesh;
-    }
-
     drawV2xCube(obstacle) {
         const { length, width, height, positionX, positionY, type, heading, id } = obstacle;
-        const color = obstacleColorMapping[type] || obstacleColorMapping.DEFAULT;
-        const v2XCubeMesh = this.getV2xCubeMemo(id, () => {
-            return this.solidFaceCubeMeshTemplate.clone();
-        });
+        const color = this.colors.obstacleColorMapping[type] || this.colors.obstacleColorMapping.DEFAULT;
+        const v2XCubeMesh = this.solidFaceCubeMeshTemplate.clone();
         const position = this.coordinates.applyOffset({
             x: positionX,
             y: positionY,
@@ -441,20 +453,18 @@ export default class Obstacles {
     drawCube(obstacle) {
         const group = new THREE.Group();
         const { length, width, height, positionX, positionY, type, heading, confidence = 0.5, id } = obstacle;
-        const color = obstacleColorMapping[type] || obstacleColorMapping.DEFAULT;
+        const color = this.colors.obstacleColorMapping[type] || this.colors.obstacleColorMapping.DEFAULT;
         const position = this.coordinates.applyOffset({
             x: positionX,
             y: positionY,
         });
         if (confidence > 0) {
-            const solidBox = this.getCubeMemo(`${id}_solidbox`, () => {
-                const geometry = new THREE.BoxGeometry(length, width, height * confidence);
-                const material = new THREE.MeshBasicMaterial({ color });
-                const box = new THREE.BoxHelper(new THREE.Mesh(geometry, material));
-                return box;
-            });
+            const geometry = new THREE.BoxGeometry(length, width, confidence < 1 ? height * confidence : height);
+            const material = new THREE.MeshBasicMaterial({ color });
+            const solidBox = new THREE.BoxHelper(new THREE.Mesh(geometry, material));
             solidBox.material.color.set(color);
-            solidBox.position.z = ((height || DEFAULT_HEIGHT) / 2) * confidence;
+            solidBox.position.z =
+                confidence < 1 ? ((height || DEFAULT_HEIGHT) / 2) * confidence : (height || DEFAULT_HEIGHT) / 2;
             group.add(solidBox);
         }
         if (confidence < 1) {
@@ -467,7 +477,7 @@ export default class Obstacles {
         return group;
     }
 
-    drawTexts(obstacle, autoDrivingCar) {
+    getTexts(obstacle, autoDrivingCar) {
         const { positionX, positionY, height, id, source } = obstacle;
         const { obstacleDistanceAndSpeed, obstacleId, obstaclePriority, obstacleInteractiveTag, v2x } =
             this.option.layerOption.Perception;
@@ -482,20 +492,21 @@ export default class Obstacles {
             y: positionY,
             z: height || DEFAULT_HEIGHT,
         });
-        const lineSpacing = 0.5;
+        const lineSpacing = 1;
         const deltaX = isBirdView ? 0.0 : lineSpacing * Math.cos(adcHeading);
-        const deltaY = isBirdView ? 0.7 : lineSpacing * Math.sin(adcHeading);
+        const deltaY = isBirdView ? 1 : lineSpacing * Math.sin(adcHeading);
         const deltaZ = isBirdView ? 0.0 : lineSpacing;
         let lineCount = 0;
 
         if (obstacleDistanceAndSpeed) {
             const distance = adcPosition.distanceTo(obstaclePosition).toFixed(1);
             const speed = obstacle.speed.toFixed(1);
-            const speedAndDistanceText = this.text.drawText(`(${distance}m,${speed}m/s)`, 0xffea00, initPosition);
-            if (speedAndDistanceText) {
-                textMeshs.push(speedAndDistanceText);
-                lineCount += 1;
-            }
+            const speedAndDistanceText = {
+                str: `(${distance}m,${speed}m/s)`,
+                position: initPosition,
+            };
+            textMeshs.push(speedAndDistanceText);
+            lineCount += 1;
         }
 
         if (obstacleId) {
@@ -504,11 +515,12 @@ export default class Obstacles {
                 y: initPosition.y + lineCount * deltaY,
                 z: initPosition.z + lineCount * deltaZ,
             };
-            const idText = this.text.drawText(id, 0xffea00, idPosition);
-            if (idText) {
-                textMeshs.push(idText);
-                lineCount += 1;
-            }
+            const idText = {
+                str: id,
+                position: idPosition,
+            };
+            textMeshs.push(idText);
+            lineCount += 1;
         }
 
         if (obstaclePriority) {
@@ -519,12 +531,13 @@ export default class Obstacles {
                     y: initPosition.y + lineCount * deltaY,
                     z: initPosition.z + lineCount * deltaZ,
                 };
-                const priorityText = this.text.drawText(priority, 0xffea00, priorityPosition);
-                if (priorityText) {
-                    textMeshs.push(priorityText);
-                    lineCount += 1;
-                }
+                const priorityText = {
+                    str: priority,
+                    position: priorityPosition,
+                };
+                textMeshs.push(priorityText);
             }
+            lineCount += 1;
         }
 
         if (obstacleInteractiveTag) {
@@ -535,12 +548,13 @@ export default class Obstacles {
                     y: initPosition.y + lineCount * deltaY,
                     z: initPosition.z + lineCount * deltaZ,
                 };
-                const interactiveTagText = this.text.drawText(interactiveTag, 0xffea00, interactiveTagPosition);
-                if (interactiveTagText) {
-                    textMeshs.push(interactiveTagText);
-                    lineCount += 1;
-                }
+                const interactiveTagText = {
+                    str: interactiveTag,
+                    position: interactiveTagPosition,
+                };
+                textMeshs.push(interactiveTagText);
             }
+            lineCount += 1;
         }
 
         if (isV2x && v2x) {
@@ -552,14 +566,66 @@ export default class Obstacles {
                         y: initPosition.y + lineCount * deltaY,
                         z: initPosition.z + lineCount * deltaZ,
                     };
-                    const v2xTypeText = this.text.drawText(t, 0xffea00, v2xTypePosition);
-                    if (v2xTypeText) {
-                        textMeshs.push(v2xTypeText);
-                        lineCount += 1;
-                    }
+                    const v2xTypeText = {
+                        str: t,
+                        position: v2xTypePosition,
+                    };
+                    textMeshs.push(v2xTypeText);
                 });
+                lineCount += 1;
             }
         }
         return textMeshs;
+    }
+
+    // 动态创建文字的canvas
+    generateTextCanvas(texts: { str: string; position: THREE.Vector3 }[], color = '#fff') {
+        const maxWidth = 1000;
+        let canvasWidth = 0;
+
+        const positionItems: { start: number; lineNum: number; width: number }[] = [];
+        let curLine = 0;
+        let curStart = 0;
+        const canvas = document.createElement('canvas');
+        canvas.style.background = 'rgba(255, 0, 0, 1)';
+        const context = canvas.getContext('2d');
+        const lineHeight = 48;
+        context.font = `${lineHeight / 2}px sans-serif`;
+
+        for (let i = 0; i < texts.length; i += 1) {
+            const measureText = context.measureText(texts[i].str);
+            let { width } = measureText;
+            width = Math.ceil(width) + (Math.ceil(width) % 2 === 1 ? 1 : 0);
+
+            if (width + curStart < maxWidth) {
+                positionItems.push({ start: curStart, lineNum: curLine, width });
+                canvasWidth = Math.max(canvasWidth, curStart + width);
+                curStart += width;
+            } else {
+                curLine += 1;
+                positionItems.push({ start: 0, lineNum: curLine, width });
+                curStart = width;
+                canvasWidth = Math.max(canvasWidth, width);
+            }
+        }
+        const canvasHeight = (curLine + 1) * lineHeight;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        context.fillStyle = color;
+        context.font = `${lineHeight / 2}px sans-serif`;
+        context.textBaseline = 'middle';
+        context.textAlign = 'left';
+        for (let i = 0; i < positionItems.length; i += 1) {
+            const { start, lineNum } = positionItems[i];
+            context.fillText(texts[i].str, start, lineNum * lineHeight + lineHeight / 2);
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        return {
+            texture,
+            canvasWidth,
+            canvasHeight,
+            positionItems,
+        };
     }
 }

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { IconIcAimingCircle, IconIcDextroversionHighlight, IconIcLeftTurnDefault } from '@dreamview/dreamview-ui';
+import { useImagePrak, IconPark } from '@dreamview/dreamview-ui';
 import useStyle from './useStyle';
 import './index.less';
 
@@ -11,6 +11,7 @@ type RotationInfoProps = {
 
 function RotationInfo(props: RotationInfoProps) {
     const { classes } = useStyle();
+    const img = useImagePrak('ic_aiming_circle');
 
     const isLeftOn = useMemo(
         () => props?.turnSignal === 'LEFT' || props?.turnSignal === 'EMERGENCY',
@@ -50,13 +51,14 @@ function RotationInfo(props: RotationInfoProps) {
                 <span className={classes['dashboard-rotation-info-font-small']}>Rotation Ratio</span>
             </div>
             <div className={classes['dashboard-rotation-info-wheel']}>
-                <IconIcLeftTurnDefault
+                <IconPark
+                    name='IcLeftTurnDefault'
                     className={isLeftOn ? 'turn-signal' : ''}
                     style={{
                         fontSize: 16,
                     }}
                 />
-                {/* <IconIcAimingCircle
+                {/* <IconPark name='IcAimingCircle'
                     rotate={steeringAngle}
                     style={{
                         marginLeft: 10,
@@ -74,10 +76,11 @@ function RotationInfo(props: RotationInfoProps) {
                         transform: `rotate(${steeringAngle}deg)`,
                     }}
                     // eslint-disable-next-line global-require
-                    src={require('./ic_aiming_circle@3x.png')}
+                    src={img}
                     alt=''
                 />
-                <IconIcDextroversionHighlight
+                <IconPark
+                    name='IcDextroversionHighlight'
                     className={isRightOn ? 'turn-signal' : ''}
                     style={{
                         fontSize: 16,

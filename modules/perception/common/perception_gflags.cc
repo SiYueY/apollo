@@ -67,7 +67,7 @@ DEFINE_string(lidar_sensor_name, "velodyne128", "lidar sensor name");
 DEFINE_string(object_template_file, "object_template.pb.txt",
               "object template config file");
 
-DEFINE_int32(hdmap_sample_step, 5, "hdmap sample step");
+DEFINE_int32(hdmap_sample_step, 1, "hdmap sample step");
 
 // lidar_center_point
 DEFINE_bool(use_trt, false, "True if preprocess in CPU mode.");
@@ -92,6 +92,23 @@ DEFINE_string(scene_manager_file, "scene_manager.conf",
 DEFINE_string(roi_service_file, "roi_service.conf", "roi service config file");
 DEFINE_string(ground_service_file, "ground_service.conf",
               "ground service config file");
+
+// front critical judgement (in NOVATEL system)
+DEFINE_bool(need_judge_front_critical, false,
+        "True if should short-miss-detection-but-track-output");
+DEFINE_double(x_front, 3.0, "reserve range smaller than X");
+DEFINE_double(x_back, -3.0, "reserve range bigger than X");
+DEFINE_double(y_front, 8.0, "reserve range smaller than Y");
+DEFINE_double(y_back, 0.0, "reserve range bigger than Y");
+
+// blind TrafficCone (in NOVATEL system)
+DEFINE_bool(need_reserve_blind_cone, false,
+        "True if reserve trafficCone when in host-car-blind-zone");
+DEFINE_double(cone_x_front, 2.0, "cone reserve range smaller than X");
+DEFINE_double(cone_x_back, -2.0, "cone reserve range bigger than X");
+DEFINE_double(cone_y_front, 5.0, "cone reserve range smaller than Y");
+DEFINE_double(cone_y_back, 0.0, "cone reserve range bigger than Y");
+DEFINE_double(cone_reserve_time, 10000.0, "cone reserve time");
 
 }  // namespace perception
 }  // namespace apollo

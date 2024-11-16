@@ -586,6 +586,27 @@ Status LonController::ComputeControlCommand(
     cmd->set_gear_location(chassis->gear_location());
   }
 
+  if (lon_based_pidcontroller_conf_.use_speed_itfc()) {
+    reference_spd_cmd_ = reference_spd_ + debug->speed_offset();
+    if ((reference_spd_ <=
+         lon_based_pidcontroller_conf_.speed_itfc_full_stop_speed()) &&
+        (chassis->gear_location() == canbus::Chassis::GEAR_DRIVE)) {
+      if ((debug->path_remain() >=
+           lon_based_pidcontroller_conf_.speed_itfc_path_remain_min()) &&
+          (debug->preview_acceleration_reference() >=
+           lon_based_pidcontroller_conf_.speed_itfc_dcc_emergency()) &&
+          (debug->path_remain() <=
+           lon_based_pidcontroller_conf_.speed_itfc_path_remain_max())) {
+        if (debug->preview_acceleration_reference() <=
+            lon_based_pidcontroller_conf_.speed_itfc_acc_thres()) {
+          reference_spd_cmd_ =
+              lon_based_pidcontroller_conf_.speed_itfc_speed_cmd();
+        }
+      }
+    }
+    cmd->set_speed(reference_spd_cmd_);
+  }
+
   return Status::OK();
 }
 
@@ -680,6 +701,9 @@ void LonController::ComputeLongitudinalErrors(
   debug->set_preview_speed_error(preview_point.v() - s_dot_matched);
   debug->set_preview_speed_reference(preview_point.v());
   debug->set_preview_acceleration_reference(preview_point.a());
+  if (lon_based_pidcontroller_conf_.use_speed_itfc()) {
+    reference_spd_ = reference_point.v();
+  }
 }
 
 void LonController::SetDigitalFilter(double ts, double cutoff_freq,
@@ -740,14 +764,14 @@ bool LonController::IsStopByDestination(SimpleLongitudinalDebug *debug) {
   auto stop_reason = trajectory_message_->decision().main_decision().stop();
   ADEBUG << "Current stop reason is \n" << stop_reason.DebugString();
   ADEBUG << "Planning command status msg is \n"
-         << injector_->Get_planning_command_status()->ShortDebugString();
+         << injector_->get_planning_command_status()->ShortDebugString();
 
   StopReasonCode stop_reason_code = stop_reason.reason_code();
 
   if (stop_reason_code == StopReasonCode::STOP_REASON_SIGNAL ||
       stop_reason_code == StopReasonCode::STOP_REASON_REFERENCE_END ||
       stop_reason_code == StopReasonCode::STOP_REASON_PRE_OPEN_SPACE_STOP ||
-      injector_->Get_planning_command_status()->status() ==
+      injector_->get_planning_command_status()->status() ==
           CommandStatusType::FINISHED ||
       trajectory_message_->decision().main_decision().has_mission_complete()) {
     ADEBUG << "[IsStopByDestination]Current stop reason is in destination.";

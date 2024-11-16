@@ -49,9 +49,11 @@ class LatControllerTest : public ::testing::Test, LatController {
                             const double linear_v, const double angular_v,
                             const double linear_a,
                             const TrajectoryAnalyzer &trajectory_analyzer,
-                            SimpleLateralDebug *debug) {
+                            SimpleLateralDebug *debug,
+                            const canbus::Chassis *chassis) {
     LatController::ComputeLateralErrors(x, y, theta, linear_v, angular_v,
-                                        linear_a, trajectory_analyzer, debug);
+                                        linear_a, trajectory_analyzer, debug,
+                                        chassis);
   }
 
  protected:
@@ -79,25 +81,23 @@ class LatControllerTest : public ::testing::Test, LatController {
     return planning_trajectory_pb;
   }
 
-  // LatControllerConf lateral_conf_;
-
   double timestamp_ = 0.0;
 };
 
 TEST_F(LatControllerTest, ComputeLateralErrors) {
   auto localization_pb = LoadLocalizaionPb(
-      "/apollo/modules/control/testdata/lateral_controller_test/"
-      "1_localization.pb.txt");
+      "/apollo/modules/control/controllers/lat_based_lqr_controller/"
+      "lateral_controller_test/1_localization.pb.txt");
   auto chassis_pb = LoadChassisPb(
-      "/apollo/modules/control/testdata/lateral_controller_test/"
-      "1_chassis.pb.txt");
+      "/apollo/modules/control/controllers/lat_based_lqr_controller/"
+      "lateral_controller_test/1_chassis.pb.txt");
   FLAGS_enable_map_reference_unify = false;
   auto vehicle_state = injector_->vehicle_state();
   vehicle_state->Update(localization_pb, chassis_pb);
 
   auto planning_trajectory_pb = LoadPlanningTrajectoryPb(
-      "/apollo/modules/control/testdata/lateral_controller_test/"
-      "1_planning.pb.txt");
+      "/apollo/modules/control/controllers/lat_based_lqr_controller/"
+      "lateral_controller_test/1_planning.pb.txt");
   TrajectoryAnalyzer trajectory_analyzer(&planning_trajectory_pb);
 
   ControlCommand cmd;
@@ -106,7 +106,8 @@ TEST_F(LatControllerTest, ComputeLateralErrors) {
   ComputeLateralErrors(
       vehicle_state->x(), vehicle_state->y(), vehicle_state->heading(),
       vehicle_state->linear_velocity(), vehicle_state->angular_velocity(),
-      vehicle_state->linear_acceleration(), trajectory_analyzer, debug);
+      vehicle_state->linear_acceleration(), trajectory_analyzer, debug,
+      &chassis_pb);
 
   double theta_error_expected = -0.03549;
   double theta_error_dot_expected = 0.0044552856731;

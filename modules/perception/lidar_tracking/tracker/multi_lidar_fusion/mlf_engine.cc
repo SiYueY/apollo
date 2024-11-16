@@ -27,6 +27,7 @@
 #include "modules/perception/common/algorithm/sensor_manager/sensor_manager.h"
 #include "modules/perception/common/util.h"
 #include "modules/perception/lidar_tracking/tracker/common/track_pool_types.h"
+#include "modules/perception/lidar_tracking/tracker/multi_lidar_fusion/util.h"
 
 namespace apollo {
 namespace perception {
@@ -53,6 +54,9 @@ bool MlfEngine::Init(const MultiTargetTrackerInitOptions& options) {
   reserved_invisible_time_ = config.reserved_invisible_time();
   use_frame_timestamp_ = config.use_frame_timestamp();
   set_static_outside_hdmap_ = config.set_static_outside_hdmap();
+  print_debug_log_ = config.print_debug_log();
+  delay_output_ = config.delay_time_output();
+  pub_track_times_ = config.pub_track_times();
 
   matcher_.reset(new MlfTrackObjectMatcher);
   MlfTrackObjectMatcherInitOptions matcher_init_options;
@@ -74,6 +78,10 @@ bool MlfEngine::Track(const MultiTargetTrackerOptions& options,
       object->latest_tracked_time = frame->timestamp;
     }
   }
+  if (print_debug_log_) {
+    ObjectsDebugInfo(frame, true);
+    ObjectsDebugInfo(frame, false);
+  }
   // 1. add global offset to pose (only when no track exists)
   if (foreground_track_data_.empty() && background_track_data_.empty()) {
     global_to_local_offset_ = -frame->lidar2world_pose.translation();
@@ -82,7 +90,7 @@ bool MlfEngine::Track(const MultiTargetTrackerOptions& options,
   sensor_to_local_pose_.pretranslate(global_to_local_offset_);
   // 2. split fg and bg objects, and transform to tracked objects
   SplitAndTransformToTrackedObjects(frame->segmented_objects,
-                                    frame->sensor_info);
+                                    frame->sensor_info, frame->timestamp);
   // 3. assign tracked objects to tracks
   MlfTrackObjectMatcherOptions match_options;
   TrackObjectMatchAndAssign(match_options, foreground_objects_, "foreground",
@@ -97,6 +105,9 @@ bool MlfEngine::Track(const MultiTargetTrackerOptions& options,
     TrackStateFilter(background_track_data_, frame->timestamp);
   }
   // 5. track to object if is main sensor
+  if (print_debug_log_) {
+    TrackDebugInfo(frame);
+  }
   frame->tracked_objects.clear();
   if (is_main_sensor) {
     CollectTrackedResult(frame);
@@ -136,14 +147,16 @@ bool MlfEngine::Track(const MultiTargetTrackerOptions& options,
 
 void MlfEngine::SplitAndTransformToTrackedObjects(
     const std::vector<base::ObjectPtr>& objects,
-    const base::SensorInfo& sensor_info) {
+    const base::SensorInfo& sensor_info, double frame_timestamp) {
   std::vector<TrackedObjectPtr> tracked_objects;
   TrackedObjectPool::Instance().BatchGet(objects.size(), &tracked_objects);
   foreground_objects_.clear();
   background_objects_.clear();
   for (size_t i = 0; i < objects.size(); ++i) {
+    double tracked_time = objects[i]->latest_tracked_time;
+    double timestamp = use_frame_timestamp_ ? frame_timestamp : tracked_time;
     tracked_objects[i]->AttachObject(objects[i], sensor_to_local_pose_,
-                                     global_to_local_offset_, sensor_info);
+                      global_to_local_offset_, sensor_info, timestamp);
     if (!objects[i]->lidar_supplement.is_background &&
         use_histogram_for_match_) {
       tracked_objects[i]->histogram_bin_size = histogram_bin_size_;
@@ -208,17 +221,93 @@ void MlfEngine::CollectTrackedResult(LidarFrame* frame) {
   base::ObjectPool::Instance().BatchGet(num_objects, &tracked_objects);
   size_t pos = 0;
   size_t num_predict = 0;
+  size_t num_front_critical_reserve = 0;
+  size_t num_blind_trafficcone = 0;
   auto collect = [&](std::vector<MlfTrackDataPtr>* tracks) {
     for (auto& track_data : *tracks) {
-      if (!output_predict_objects_ && track_data->is_current_state_predicted_) {
-        ++num_predict;
-      } else {
-        if (!track_data->ToObject(-global_to_local_offset_, frame->timestamp,
-                                  tracked_objects[pos])) {
-          AERROR << "Tracking failed";
+      // if (!output_predict_objects_ &&
+      //      track_data->is_current_state_predicted_) {
+      //   ++num_predict;
+      // } else {
+      //   if (!track_data->ToObject(-global_to_local_offset_,
+      //        frame->timestamp, tracked_objects[pos], true)) {
+      //     AERROR << "Tracking failed";
+      //     continue;
+      //   }
+      //   ++pos;
+      // }
+      if (track_data->age_ <= pub_track_times_) {
+          if (track_data->is_front_critical_track_) {
+              AINFO << "[DelayOutput] track_id: " << track_data->track_id_
+                    << " time is " << std::to_string(frame->timestamp)
+                    << " not output";
+          }
           continue;
-        }
-        ++pos;
+      }
+      track_data->is_reserve_blind_cone_ = false;
+      // == false -> OUTPUT
+      if (!track_data->is_current_state_predicted_) {
+          if (!track_data->ToObject(-global_to_local_offset_,
+              frame->timestamp, tracked_objects[pos], true)) {
+              AERROR << "Tracking failed";
+              continue;
+          }
+          ++pos;
+          ADEBUG << "track_id: " << track_data->track_id_
+                 << " detetcted, obj-time is "
+                 << std::to_string(frame->timestamp) << " and output";
+          continue;
+      } else {
+          // == true: output_predict_objects_ == true -> OUTPUT
+          if (output_predict_objects_) {
+              if (!track_data->ToObject(-global_to_local_offset_,
+                  frame->timestamp, tracked_objects[pos], true)) {
+                  AERROR << "Tracking failed";
+                  continue;
+              }
+              ++pos;
+              continue;
+          } else {
+              // output_predict_objects_ == false
+              // should judge front-critical and time
+              TrackedObjectConstPtr latest_object =
+                  track_data->GetLatestObject().second;
+              // front-critical and within time -> OUTPUT
+              if (latest_object != nullptr &&
+                  track_data->is_front_critical_track_ &&
+                  latest_object->output_velocity.head<2>().norm() < 0.01 &&
+                  frame->timestamp -
+                      track_data->GetLatestObject().first <= delay_output_) {
+                  ++num_front_critical_reserve;
+                  AINFO << "track_id: " << track_data->track_id_
+                        << " missed, obj-time is "
+                        << std::to_string(track_data->GetLatestObject().first)
+                        << " and predict output";
+                  if (!track_data->ToObject(-global_to_local_offset_,
+                       frame->timestamp, tracked_objects[pos], false)) {
+                      AERROR << "Tracking failed";
+                      continue;
+                  }
+                  ++pos;
+                  continue;
+              } else if (JudgeBlindTrafficCone(track_data, frame->timestamp,
+                  -global_to_local_offset_, frame->lidar2world_pose,
+                  frame->lidar2novatel_extrinsics)) {
+                  ++num_blind_trafficcone;
+                  if (!track_data->ToObject(-global_to_local_offset_,
+                       frame->timestamp, tracked_objects[pos], false)) {
+                      AERROR << "Tracking failed";
+                      continue;
+                  }
+                  track_data->is_reserve_blind_cone_ = true;
+                  ++pos;
+                  continue;
+              } else {
+                  // NO front-critical or beyond time -> NO OUTPUT
+                  ++num_predict;
+                  continue;
+              }
+          }
       }
     }
   };
@@ -226,6 +315,8 @@ void MlfEngine::CollectTrackedResult(LidarFrame* frame) {
   collect(&background_track_data_);
   if (num_predict != 0) {
     AINFO << "MlfEngine, num_predict: " << num_predict
+          << " num front_critical: " << num_front_critical_reserve
+          << " num blind trafficcone: " << num_blind_trafficcone
           << " num_objects: " << num_objects;
     if (num_predict > num_objects) {
       AERROR << "num_predict > num_objects";
@@ -239,8 +330,13 @@ void MlfEngine::RemoveStaleTrackData(const std::string& name, double timestamp,
                                      std::vector<MlfTrackDataPtr>* tracks) {
   size_t pos = 0;
   for (size_t i = 0; i < tracks->size(); ++i) {
-    if (tracks->at(i)->latest_visible_time_ + reserved_invisible_time_ >=
-        timestamp) {
+    float reserve_time = reserved_invisible_time_;
+    if (tracks->at(i)->is_front_critical_track_ &&
+        reserved_invisible_time_ < delay_output_) {
+        reserve_time = delay_output_;
+    }
+    if (tracks->at(i)->latest_visible_time_ + reserve_time >= timestamp ||
+        tracks->at(i)->is_reserve_blind_cone_) {
       if (i != pos) {
         tracks->at(pos) = tracks->at(i);
       }
@@ -250,6 +346,83 @@ void MlfEngine::RemoveStaleTrackData(const std::string& name, double timestamp,
   AINFO << "MlfEngine: " << name << " remove stale tracks, from "
         << tracks->size() << " to " << pos;
   tracks->resize(pos);
+}
+
+void MlfEngine::ObjectsDebugInfo(LidarFrame* frame, bool foreground_log) {
+    size_t objcnt = 0;
+    for (auto obj : frame->segmented_objects) {
+        if (foreground_log && !obj->lidar_supplement.is_background) {
+            objcnt++;
+        }
+        if (!foreground_log && obj->lidar_supplement.is_background) {
+            objcnt++;
+        }
+    }
+    std::stringstream ssstr;
+    if (foreground_log) {
+        ssstr << "[Foreground-objects] timestamp: "
+              << std::to_string(frame->timestamp) << " objs: " << objcnt
+              << std::endl;
+    } else {
+        ssstr << "[Background-objects] timestamp: "
+              << std::to_string(frame->timestamp) << " objs: " << objcnt
+              << std::endl;
+    }
+    for (auto obj : frame->segmented_objects) {
+        if (foreground_log && obj->lidar_supplement.is_background) {
+            continue;
+        }
+        if (!foreground_log && !obj->lidar_supplement.is_background) {
+            continue;
+        }
+        ssstr << "id = " << obj->id << ": " << obj->center(0) << ", "
+              << obj->center(1) << ", " << obj->center(2) << ", "
+              << obj->size(0) << ", " << obj->size(1) << ", "
+              << obj->size(2) << ", " << obj->theta << ", "
+              << static_cast<int>(obj->type) << std::endl;
+    }
+    AINFO << ssstr.str();
+}
+
+void MlfEngine::TrackDebugInfo(LidarFrame* frame) {
+    std::stringstream sstr;
+    sstr << "[This frame TrackDataDebugInfo]: timestamp: "
+         << std::to_string(frame->timestamp) << " tracks: "
+         << foreground_track_data_.size() << std::endl;
+    sstr << "lidar2world_pose: " << sensor_to_local_pose_(0, 0) << ", "
+         << sensor_to_local_pose_(0, 1) << ", " << sensor_to_local_pose_(0, 2)
+         << ", " << sensor_to_local_pose_(0, 3) << ", "
+         << sensor_to_local_pose_(1, 0) << ", " << sensor_to_local_pose_(1, 1)
+         << ", " << sensor_to_local_pose_(1, 2) << ", "
+         << sensor_to_local_pose_(1, 3) << ", " << sensor_to_local_pose_(2, 0)
+         << ", " << sensor_to_local_pose_(2, 1) << ", "
+         << sensor_to_local_pose_(2, 2) << ", " << sensor_to_local_pose_(2, 3)
+         << ", "<< sensor_to_local_pose_(3, 0) << ", "
+         << sensor_to_local_pose_(3, 1) << ", " << sensor_to_local_pose_(3, 2)
+         << ", " << sensor_to_local_pose_(3, 3) << ", "
+         << std::to_string(global_to_local_offset_(0)) << ", "
+         << std::to_string(global_to_local_offset_(1)) << ", "
+         << std::to_string(global_to_local_offset_(2)) << std::endl;
+
+    auto debug_info = [&](std::vector<MlfTrackDataPtr>* tracks) {
+        for (auto& track_data : *tracks) {
+            const TrackedObjectConstPtr latest_obj =
+                track_data->GetLatestObject().second;
+            sstr << " track_id = " << track_data->track_id_ << ": "
+                 << latest_obj->center(0) << ", " << latest_obj->center(1)
+                 << ", " << latest_obj->center(2) << ", "
+                 << latest_obj->size(0) << ", " << latest_obj->size(1) << ", "
+                 << latest_obj->size(2) << ", "
+                 << latest_obj->output_direction(0) << ", "
+                 << latest_obj->output_direction(1) << ", "
+                 << latest_obj->output_direction(2) << ", "
+                 << static_cast<int>(latest_obj->type) << ", "
+                 << std::to_string(latest_obj->object_ptr->latest_tracked_time)
+                 << std::endl;
+        }
+    };
+    debug_info(&foreground_track_data_);
+    AINFO << sstr.str();
 }
 
 PERCEPTION_REGISTER_MULTITARGET_TRACKER(MlfEngine);

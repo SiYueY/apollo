@@ -1,14 +1,34 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Popover as InternalPopover, PopoverProps } from 'antd';
-import './index.less';
+import { makeStylesWithProps } from '@dreamview/dreamview-theme';
 import { getPrefixCls } from '../../tools/prefixCls/prefixCls';
 
-export function Popover(props: PopoverProps) {
-    const { prefixCls: customizePrefixCls, ...rest } = props;
-    const prefixCls = getPrefixCls('popover', customizePrefixCls);
+const useStyle = makeStylesWithProps<{ classname: string }>()((theme, prop) => ({
+    [prop.classname]: {
+        '&.dreamview-popover .dreamview-popover-inner': {
+            padding: '5px 10px',
+            background: 'rgba(35,42,51, 0.8)',
+        },
+        '&.dreamview-popover .dreamview-popover-inner-content': {
+            color: 'white',
+            ...theme.tokens.typography.content,
+        },
+        '& .dreamview-popover-arrow::after': {
+            background: 'rgba(35,42,51, 0.8)',
+        },
+        '& .dreamview-popover-arrow::before': {
+            background: theme.tokens.colors.transparent,
+        },
+    },
+}));
 
-    return <InternalPopover prefixCls={prefixCls} {...rest} />;
+
+export function Popover(props: PopoverProps) {
+    const { prefixCls: customizePrefixCls, rootClassName, ...rest } = props;
+    const prefixCls = getPrefixCls('popover', customizePrefixCls);
+    const { classes, cx } = useStyle({ classname: prefixCls });
+    return <InternalPopover rootClassName={cx(classes[prefixCls], rootClassName)} prefixCls={prefixCls} {...rest} />;
 }
 
 Popover.propTypes = {

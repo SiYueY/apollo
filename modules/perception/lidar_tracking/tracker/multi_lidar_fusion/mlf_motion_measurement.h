@@ -15,6 +15,8 @@
  *****************************************************************************/
 #pragma once
 
+#include <vector>
+
 #include "cyber/common/macros.h"
 #include "modules/perception/lidar_tracking/tracker/common/mlf_track_data.h"
 #include "modules/perception/lidar_tracking/tracker/common/tracked_object.h"
@@ -43,10 +45,11 @@ class MlfMotionMeasurement {
    * @param track_data track data
    * @param latest_object latest object in track
    * @param new_object new object for storing selection
+   * @param condition some special condition for selection
    */
   void MeasurementSelection(const MlfTrackDataConstPtr& track_data,
-                            const TrackedObjectConstPtr& latest_object,
-                            TrackedObjectPtr new_object);
+        const TrackedObjectConstPtr& latest_object,
+        TrackedObjectPtr new_object, bool condition = true);
   /**
    * @brief Estimate measurement quality
    *
@@ -55,6 +58,13 @@ class MlfMotionMeasurement {
    */
   void MeasurementQualityEstimation(const TrackedObjectConstPtr& latest_object,
                                     TrackedObjectPtr new_object);
+
+  void MeasurementRefine(const MlfTrackDataConstPtr& track_data,
+                         const TrackedObjectConstPtr& latest_object,
+                         TrackedObjectPtr new_object, const double& time_diff);
+
+  Eigen::Vector2d ComputeExpectedVelocity(
+      std::vector<TrackedObjectConstPtr> history_objects, double cur_time);
 
  private:
   const double EPSILON_TIME = 1e-3;  // or numeric_limits<double>::epsilon()

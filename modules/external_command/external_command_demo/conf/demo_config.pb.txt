@@ -1,5 +1,6 @@
 left_path_width: 2.0
 right_path_width: 2.0
+min_distance_error: 0.1
 target_speed: 3.0
 point1_x: 750938.87
 point1_y: 2564015.21
@@ -12,3 +13,5 @@ point4_y: 2564014.67
 end_pose_x: 750957.47
 end_pose_y: 2563975.60
 end_pose_heading: 3.14
+file_of_path_follow_with_localization_record: "/apollo/data/bag/demo_loc/"
+file_of_path_follow_with_planning_record: "/apollo/data/bag/demo_path.record"

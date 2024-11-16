@@ -34,6 +34,7 @@ using apollo::common::util::ContainsKey;
 using apollo::common::util::JsonUtil;
 using apollo::cyber::common::GetProtoFromASCIIFile;
 using apollo::cyber::common::SetProtoToASCIIFile;
+using apollo::cyber::common::SetStringToASCIIFile;
 using apollo::external_command::LaneFollowCommand;
 using apollo::external_command::ValetParkingCommand;
 using apollo::external_command::ActionCommandType;
@@ -492,7 +493,7 @@ void SimulationWorldUpdater::RegisterRoutingMessageHandlers() {
           response["data"]["info"]["code"] = 0;
           response["data"]["info"]["message"] = "Success";
         }
-        if (!isProcessRunning("sim_obstacle")) {
+        if (!hmi_->isProcessRunning("sim_obstacle")) {
           sim_world_service_.PublishMonitorMessage(
               MonitorMessageItem::ERROR,
               "Sim obstacle not start, Please check if there is a binary "
@@ -655,11 +656,19 @@ void SimulationWorldUpdater::RegisterMessageHandlers() {
         }
         sim_control_manager->ReSetPoinstion(x, y, heading);
         // Send a ActionCommand to clear the trajectory of planning.
-        if (isProcessRunning("planning.dag")) {
+        if (hmi_->isProcessRunning("planning.dag")) {
           auto action_command = std::make_shared<ActionCommand>();
           action_command->set_command_id(++command_id_);
           action_command->set_command(ActionCommandType::CLEAR_PLANNING);
           sim_world_service_.PublishActionCommand(action_command);
+        }
+        std::string start_str = std::to_string(x) + "," + std::to_string(y) +
+                                "," + std::to_string(heading);
+        std::string start_point_file =
+            FLAGS_map_dir + "/" + FLAGS_current_start_point_filename;
+        if (!SetStringToASCIIFile(start_str, start_point_file)) {
+          AERROR << "Failed to set start point to ascii file "
+                 << start_point_file;
         }
         response["data"]["info"]["code"] = 0;
         websocket_->SendData(conn, response.dump());
@@ -1296,26 +1305,6 @@ bool SimulationWorldUpdater::LoadPOI() {
   }
 
   AWARN << "Failed to load default list of POI from " << EndWayPointFile();
-  return false;
-}
-
-bool SimulationWorldUpdater::isProcessRunning(const std::string &process_name) {
-  std::stringstream commandStream;
-  commandStream << "pgrep -f " << process_name;
-  std::string command = commandStream.str();
-
-  FILE *fp = popen(command.c_str(), "r");
-  if (fp) {
-    char result[128];
-    if (fgets(result, sizeof(result), fp) != nullptr) {
-      AINFO << process_name << " is running";
-      pclose(fp);
-      return true;
-    } else {
-      AINFO << process_name << " is not running";
-    }
-    pclose(fp);
-  }
   return false;
 }
 

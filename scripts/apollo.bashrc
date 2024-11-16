@@ -26,7 +26,6 @@ if [ -f /.dockerenv ]; then
 fi
 
 export APOLLO_CONFIG_HOME="${APOLLO_CONFIG_HOME:=$HOME/.apollo}"
-
 export APOLLO_ROOT_DIR="${APOLLO_ROOT_DIR}"
 export APOLLO_IN_DOCKER="${APOLLO_IN_DOCKER}"
 export APOLLO_CACHE_DIR="${APOLLO_ROOT_DIR}/.cache"
@@ -39,6 +38,7 @@ export APOLLO_FLAG_PATH="${APOLLO_ROOT_DIR}"
 export APOLLO_LAUNCH_PATH="${APOLLO_ROOT_DIR}"
 export APOLLO_MODEL_PATH="${APOLLO_ROOT_DIR}/modules/perception/data/models"
 
+export APOLLO_DISTRIBUTION_VERSION=9.0
 export APOLLO_DISTRIBUTION_HOME="/apollo"
 export APOLLO_PLUGIN_INDEX_PATH="${APOLLO_DISTRIBUTION_HOME}/share/cyber_plugin_index"
 export APOLLO_PLUGIN_SEARCH_IN_BAZEL_OUTPUT=1
@@ -120,6 +120,8 @@ function determine_gpu_use_target() {
       if lsmod | grep -q nvgpu; then
         if ldconfig -p | grep -q cudart; then
           use_gpu=1
+          need_cuda=1
+          gpu_platform="NVIDIA"
         fi
       fi
     else ## x86_64 mode

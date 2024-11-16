@@ -1,6 +1,5 @@
 {
     "npmClient": "yarn",
-    "useWorkspaces": true,
     "workspaces": [
         "packages/*",
         "packages/platforms/*"
@@ -17,9 +16,11 @@
             "exact": true
         },
         "publish": {
-            "npmClient": "npm",
+            "npmClient": "yarn",
+            "access": "public",
             "allowBranch": [
                 "master",
+                "beta",
                 "dev_dv2.0",
                 "dreamviewplus_vehicle"
             ],

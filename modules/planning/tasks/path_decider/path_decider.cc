@@ -22,12 +22,14 @@
 
 #include <algorithm>
 #include <memory>
+
 #include "modules/common_msgs/planning_msgs/decision.pb.h"
+
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/util/util.h"
 #include "modules/planning/planning_base/common/planning_context.h"
-#include "modules/planning/planning_base/gflags/planning_gflags.h"
 #include "modules/planning/planning_base/common/util/print_debug_info.h"
+#include "modules/planning/planning_base/gflags/planning_gflags.h"
 
 namespace apollo {
 namespace planning {
@@ -92,6 +94,11 @@ Status PathDecider::Process(const ReferenceLineInfo *reference_line_info,
         std::min(front_static_obstacle_cycle_counter, 0));
     mutable_path_decider_status->set_front_static_obstacle_cycle_counter(
         std::max(front_static_obstacle_cycle_counter - 1, -10));
+    if (mutable_path_decider_status->front_static_obstacle_cycle_counter() <
+        -2) {
+      std::string id = " ";
+      mutable_path_decider_status->set_front_static_obstacle_id(id);
+    }
   }
   if (!MakeObjectDecision(path_data, blocking_obstacle_id, path_decision)) {
     const std::string msg = "Failed to make decision based on tunnel";
@@ -200,25 +207,29 @@ bool PathDecider::MakeStaticObstacleDecision(
                                         object_decision);
     } else if (sl_boundary.end_l() >= curr_l - min_nudge_l &&
                sl_boundary.start_l() <= curr_l + min_nudge_l) {
-      // 2. STOP if laterally too overlapping.
-      *object_decision.mutable_stop() = GenerateObjectStopDecision(*obstacle);
-
-      if (path_decision->MergeWithMainStop(
-              object_decision.stop(), obstacle->Id(),
-              reference_line_info_->reference_line(),
-              reference_line_info_->AdcSlBoundary())) {
-        path_decision->AddLongitudinalDecision("PathDecider/nearest-stop",
-                                               obstacle->Id(), object_decision);
+      if (config_.skip_overlap_stop_check()) {
+        AINFO << "skip_overlap_stop_check";
       } else {
-        ObjectDecisionType object_decision;
-        object_decision.mutable_ignore();
-        path_decision->AddLongitudinalDecision("PathDecider/not-nearest-stop",
-                                               obstacle->Id(), object_decision);
+        // 2. STOP if laterally too overlapping.
+        *object_decision.mutable_stop() = GenerateObjectStopDecision(*obstacle);
+
+        if (path_decision->MergeWithMainStop(
+                object_decision.stop(), obstacle->Id(),
+                reference_line_info_->reference_line(),
+                reference_line_info_->AdcSlBoundary())) {
+          path_decision->AddLongitudinalDecision(
+              "PathDecider/nearest-stop", obstacle->Id(), object_decision);
+        } else {
+          ObjectDecisionType object_decision;
+          object_decision.mutable_ignore();
+          path_decision->AddLongitudinalDecision(
+              "PathDecider/not-nearest-stop", obstacle->Id(), object_decision);
+        }
+        AINFO << "Add stop decision for static obs " << obstacle->Id()
+              << "start l" << sl_boundary.start_l() << "end l"
+              << sl_boundary.end_l() << "curr_l" << curr_l << "min_nudge_l"
+              << min_nudge_l;
       }
-      AINFO << "Add stop decision for static obs " << obstacle->Id()
-            << "start l" << sl_boundary.start_l() << "end l"
-            << sl_boundary.end_l() << "curr_l" << curr_l << "min_nudge_l"
-            << min_nudge_l;
     } else {
       // 3. NUDGE if laterally very close.
       if (sl_boundary.end_l() < curr_l - min_nudge_l) {  // &&

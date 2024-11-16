@@ -46,6 +46,7 @@ struct LidarObjectSupplement {
     height_above_ground = std::numeric_limits<float>::max();
     raw_probs.clear();
     raw_classification_methods.clear();
+    detections.clear();
   }
   // @brief orientation estimateed indicator
   bool is_orientation_ready = false;
@@ -63,6 +64,8 @@ struct LidarObjectSupplement {
   bool is_clustered = false;
   // @brief object semantic type
   ObjectSemanticType semantic_type = ObjectSemanticType::UNKNOWN;
+  // @brief object dynamic state for scene-flow model
+  MotionState dynamic_state = MotionState::UNKNOWN;
   // @brief false positive indicator
   bool is_fp = false;
   // @brief false positive probability
@@ -77,6 +80,9 @@ struct LidarObjectSupplement {
   // @brief raw probability of each classification method
   std::vector<std::vector<float>> raw_probs;
   std::vector<std::string> raw_classification_methods;
+
+  // @brief object-detection original output
+  std::vector<float> detections = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };

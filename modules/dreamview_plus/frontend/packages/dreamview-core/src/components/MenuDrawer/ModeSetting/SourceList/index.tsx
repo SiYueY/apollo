@@ -1,11 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { IconIcProfileAngerNormal, IconIcSucceed, IconIcPullDownExpansion } from '@dreamview/dreamview-ui';
-import SourceEmptyImg from '@dreamview/dreamview-core/src/assets/ic_default_page_no_data.png';
+import { IconPark, useImagePrak, Popover } from '@dreamview/dreamview-ui';
 import { useTranslation } from 'react-i18next';
 import { useMenuStore, ENUM_MENU_KEY } from '@dreamview/dreamview-core/src/store/MenuStore';
+import { useThemeContext } from '@dreamview/dreamview-theme';
 import { UpdateMenuAction } from '@dreamview/dreamview-core/src/store/MenuStore/actions';
 import useStyle from './useStyle';
-import CustomPopover from '../../../CustomPopover';
 import { RECORDER_LOAD_STATUS, usePickHmiStore } from '../../../../store/HmiStore';
 import { Spinner } from '../Spinner';
 
@@ -24,9 +23,11 @@ interface ISourceList1<T> {
 export function SourceList1<T>(props: ISourceList1<T>) {
     const { items, onChange, activeId, type } = props;
     const { t } = useTranslation('modeSettings');
-    const { classes, cx } = useStyle()();
+    const { tokens } = useThemeContext();
+    const { classes, cx } = useStyle({});
     const [, dispatch] = useMenuStore();
     const [hmi] = usePickHmiStore();
+    const SourceEmptyImg = useImagePrak('ic_empty_page_no_data');
 
     const onClick = (item: T, preLoad?: RECORDER_LOAD_STATUS) => {
         if (type === 'HDMap' && hmi.envResourcesHDMapDisable) {
@@ -49,41 +50,46 @@ export function SourceList1<T>(props: ISourceList1<T>) {
                 );
             case RECORDER_LOAD_STATUS.LOADED:
                 return (
-                    <CustomPopover trigger='hover' content={t('use')}>
-                        <IconIcProfileAngerNormal
+                    <Popover trigger='hover' content={t('use')}>
+                        <IconPark
+                            name='IcProfileAngerNormal'
                             className={cx(classes['source-list-operate'], 'source-list-operate-hover')}
                         />
-                    </CustomPopover>
+                    </Popover>
                 );
             case RECORDER_LOAD_STATUS.NOT_LOAD:
                 return null;
             default:
                 return (
-                    <CustomPopover trigger='hover' content={t('use')}>
-                        <IconIcProfileAngerNormal
+                    <Popover trigger='hover' content={t('use')}>
+                        <IconPark
+                            name='IcProfileAngerNormal'
                             className={cx(classes['source-list-operate'], 'source-list-operate-hover')}
                         />
-                    </CustomPopover>
+                    </Popover>
                 );
         }
     }, []);
 
-    const renderFontColorByPreload = useCallback((preLoad: RECORDER_LOAD_STATUS) => {
-        // 灰色字体
-        const grayColorFont = {
-            color: '#4D505A',
-        };
-        switch (preLoad) {
-            case RECORDER_LOAD_STATUS.LOADING:
-                return grayColorFont;
-            case RECORDER_LOAD_STATUS.LOADED:
-                return {};
-            case RECORDER_LOAD_STATUS.NOT_LOAD:
-                return grayColorFont;
-            default:
-                return {};
-        }
-    }, []);
+    const renderFontColorByPreload = useCallback(
+        (preLoad: RECORDER_LOAD_STATUS) => {
+            // 灰色字体
+            const grayColorFont = {
+                color: tokens.components.sourceItem.disabledColor,
+            };
+            switch (preLoad) {
+                case RECORDER_LOAD_STATUS.LOADING:
+                    return grayColorFont;
+                case RECORDER_LOAD_STATUS.LOADED:
+                    return {};
+                case RECORDER_LOAD_STATUS.NOT_LOAD:
+                    return grayColorFont;
+                default:
+                    return {};
+            }
+        },
+        [tokens],
+    );
 
     return (
         <div className={classes['source-list-container']}>
@@ -105,7 +111,8 @@ export function SourceList1<T>(props: ISourceList1<T>) {
 
                             {/* {item.preLoad === RECORDER_LOAD_STATUS.LOADING && <Spinner />} */}
                             {activeId === item.id ? (
-                                <IconIcSucceed
+                                <IconPark
+                                    name='IcSucceed'
                                     className={cx(classes['source-list-operate'], 'source-list-operate-hover')}
                                 />
                             ) : (
@@ -143,7 +150,7 @@ interface ISourceList2Item<T> {
 
 function SourceList2Item<T>(props: ISourceList2Item<T>) {
     const { item, expandChildId, onChange: propsOnChange, activeId, onExpand } = props;
-    const { classes, cx } = useStyle()({ height: (item.child?.length || 0) * 40 });
+    const { classes, cx } = useStyle({ height: (item.child?.length || 0) * 32 });
     const expand = expandChildId === item.id;
     const onClick = () => {
         onExpand(item.id);
@@ -159,7 +166,8 @@ function SourceList2Item<T>(props: ISourceList2Item<T>) {
     return (
         <>
             <div onClick={onClick} className={cx(classes['source-list-title'])}>
-                <IconIcPullDownExpansion
+                <IconPark
+                    name='IcPullDownExpansion'
                     className={cx(classes['source-list-title-icon'], {
                         [classes['source-list-title-icon-expand']]: expand,
                     })}
@@ -190,9 +198,10 @@ interface ISourceList2<T> {
 
 export function SourceList2<T>(props: ISourceList2<T>) {
     const { items, onChange, activeId } = props;
-    const { classes } = useStyle()();
+    const { classes } = useStyle({});
     const [, dispatch] = useMenuStore();
     const [expandChildId, setExpandChildId] = useState<string>(null);
+    const SourceEmptyImg = useImagePrak('ic_empty_page_no_data');
 
     const { t } = useTranslation('modeSettings');
 

@@ -19,7 +19,6 @@
 #include <utility>
 
 #include "cyber/common/log.h"
-#include "cyber/plugin_manager/plugin_manager.h"
 #include "cyber/time/clock.h"
 #include "modules/control/control_component/common/control_gflags.h"
 
@@ -61,13 +60,16 @@ Status ControlTaskAgent::ComputeControlCommand(
   for (auto &controller : controller_list_) {
     ADEBUG << "controller:" << controller->Name() << " processing ...";
     double start_timestamp = Clock::NowInSeconds();
-    controller->ComputeControlCommand(localization, chassis, trajectory, cmd);
+    Status controller_status = controller->ComputeControlCommand(
+        localization, chassis, trajectory, cmd);
     double end_timestamp = Clock::NowInSeconds();
     const double time_diff_ms = (end_timestamp - start_timestamp) * 1000;
-
     ADEBUG << "controller: " << controller->Name()
            << " calculation time is: " << time_diff_ms << " ms.";
     cmd->mutable_latency_stats()->add_controller_time_ms(time_diff_ms);
+    if (controller_status != Status::OK()) {
+      return controller_status;
+    }
   }
   return Status::OK();
 }

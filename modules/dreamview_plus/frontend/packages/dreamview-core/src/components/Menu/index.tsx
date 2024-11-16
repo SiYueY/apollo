@@ -1,11 +1,5 @@
 import React, { PropsWithChildren, useCallback, useEffect } from 'react';
-import {
-    IconIcGlobalSettingsNormal,
-    IconIcAddPanel,
-    IconIcProfileMangerNormal,
-    IconIcDefaultAvatar,
-    Popover,
-} from '@dreamview/dreamview-ui';
+import { OperatePopover, Popover, useImagePrak, IconPark } from '@dreamview/dreamview-ui';
 import {
     ENUM_MENU_KEY,
     ENUM_CERT_STATUS,
@@ -13,13 +7,19 @@ import {
     menuStoreUtils,
 } from '@dreamview/dreamview-core/src/store/MenuStore';
 import { ChangeCertStatusAction, UpdateMenuAction } from '@dreamview/dreamview-core/src/store/MenuStore/actions';
+import { useThemeContext } from '@dreamview/dreamview-theme';
 import { useTranslation } from 'react-i18next';
-import IconPersonalCenterDefault from '@dreamview/dreamview-core/src/assets/ic_personal_center_default.png';
+import Logger from '@dreamview/log';
 import useStyle from './useStyle';
 import useWebSocketServices from '../../services/hooks/useWebSocketServices';
 import User from './User';
 import { useUserInfoStore } from '../../store/UserInfoStore';
 import { CURRENT_MODE } from '../../store/HmiStore';
+import IcMoon from './moon.svg';
+import IcSun from './sun.svg';
+import { useChangeTheme } from '../../store/ThemeProviderStore';
+
+const logger = Logger.getInstance('Menu');
 
 interface IActivatableMenu {
     onClick?: () => void;
@@ -43,10 +43,10 @@ function ActivatableMenu(props: PropsWithChildren<IActivatableMenu>) {
     const popoverContent = <div className={classes['menu-item-popover']}>{popover}</div>;
 
     return (
-        <Popover rootClassName={classes.popoverBg} placement='right' trigger='hover' content={popoverContent}>
+        <Popover placement='right' trigger='hover' content={popoverContent}>
             <li
                 onClick={onClick}
-                className={cx(classes['menu-item'], classes['menu-item-icon'], {
+                className={cx(classes['menu-item'], {
                     [classes.active]: activeMenuKey === menuKey,
                 })}
             >
@@ -63,6 +63,7 @@ type MenuProps = {
 };
 
 function Menu(props: MenuProps) {
+    const IconPersonalCenterDefault = useImagePrak('ic_personal_center_default');
     const { setEnterGuideStateMemo } = props;
     const { classes, cx } = useStyle();
     const [{ activeMenu, certStatus }, dispatch] = useMenuStore();
@@ -71,7 +72,8 @@ function Menu(props: MenuProps) {
     const { isPluginConnected, pluginApi } = useWebSocketServices();
     const { t: tMode } = useTranslation('modeSettings');
     const { t: tAdd } = useTranslation('addPanel');
-
+    const { theme } = useThemeContext();
+    const setTheme = useChangeTheme();
     // 插件安装成功
     const isCertSuccess = menuStoreUtils.isCertSuccess(certStatus);
 
@@ -86,12 +88,16 @@ function Menu(props: MenuProps) {
         [activeMenu],
     );
 
+    const changeTheme = () => {
+        setTheme((prev: string) => (prev === 'drak' ? 'light' : 'drak'));
+    };
+
     useEffect(() => {
         if (isPluginConnected) {
             pluginApi
                 .checkCertStatus()
                 .then(() => {
-                    console.log('checkCertStatus success');
+                    logger.info('checkCertStatus success');
                     dispatch(ChangeCertStatusAction(ENUM_CERT_STATUS.SUCCESS));
                 })
                 .catch(() => {
@@ -112,7 +118,7 @@ function Menu(props: MenuProps) {
                     menuKey={ENUM_MENU_KEY.MODE_SETTING}
                     onMenuChange={onMenuChange}
                 >
-                    <IconIcGlobalSettingsNormal />
+                    <IconPark name='IcGlobalSettingsNormal' />
                 </ActivatableMenuMemo>
             </ul>
             <ul>
@@ -122,13 +128,16 @@ function Menu(props: MenuProps) {
                 {/*        <div className={cx(classes['add-desktop'], 'add-desktop-hover')} /> */}
                 {/*    </li> */}
                 {/* )} */}
+                <li onClick={changeTheme} className={cx(classes['menu-item'], classes['change-theme'])}>
+                    <div className={classes['theme-btn']}>{theme === 'drak' ? <IcSun /> : <IcMoon />}</div>
+                </li>
                 <ActivatableMenuMemo
                     popover={<>{tAdd('addPanel')}</>}
                     activeMenuKey={activeMenu}
                     menuKey={ENUM_MENU_KEY.ADD_PANEL}
                     onMenuChange={onMenuChange}
                 >
-                    <IconIcAddPanel />
+                    <IconPark name='IcAddPanel' />
                 </ActivatableMenuMemo>
                 {/* <ActivatableMenuMemo
                     popover={<>Save Panel 快捷键</>}
@@ -145,11 +154,16 @@ function Menu(props: MenuProps) {
                         menuKey={ENUM_MENU_KEY.PROFILE_MANAGEER}
                         onMenuChange={onMenuChange}
                     >
-                        <IconIcProfileMangerNormal />
+                        <IconPark name='IcProfileMangerNormal' />
                     </ActivatableMenuMemo>
                 )}
                 <li className={cx(classes['menu-item'])}>
-                    <Popover content={UserContent} rootClassName={classes.popover} placement='right' trigger='hover'>
+                    <OperatePopover
+                        content={UserContent}
+                        rootClassName={classes.popover}
+                        placement='right'
+                        trigger='hover'
+                    >
                         <div className={cx(classes['menu-item-image'])}>
                             {/* eslint-disable-next-line no-nested-ternary */}
                             {hasLogin ? (
@@ -165,10 +179,10 @@ function Menu(props: MenuProps) {
                                     />
                                 )
                             ) : (
-                                <IconIcDefaultAvatar />
+                                <IconPark name='IcDefaultAvatar' />
                             )}
                         </div>
-                    </Popover>
+                    </OperatePopover>
                 </li>
             </ul>
         </div>

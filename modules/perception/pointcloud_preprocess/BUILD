@@ -25,6 +25,7 @@ apollo_cc_library(
         "interface/base_pointcloud_preprocessor.h",
         "preprocessor/pointcloud_preprocessor.h",
     ],
+    copts = PERCEPTION_COPTS + if_profiler() + ["-DENABLE_PROFILER=1"],
     deps = [
         "//cyber",
         "//modules/common_msgs/sensor_msgs:pointcloud_cc_proto",
@@ -44,7 +45,7 @@ apollo_component(
     name = "libpointcloud_preprocess_component.so",
     srcs = ["pointcloud_preprocess_component.cc"],
     hdrs = ["pointcloud_preprocess_component.h"],
-    copts = PERCEPTION_COPTS + if_profiler(),
+    copts = PERCEPTION_COPTS + if_profiler() + ["-DENABLE_PROFILER=1"],
     linkopts = ["-lleveldb"],
     deps = [
         "//cyber",

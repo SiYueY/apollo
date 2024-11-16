@@ -98,6 +98,7 @@ apollo::common::Status LaneChangePath::Process(
 bool LaneChangePath::DecidePathBounds(std::vector<PathBoundary>* boundary) {
   boundary->emplace_back();
   auto& path_bound = boundary->back();
+  double path_narrowest_width = 0;
   // 1. Initialize the path boundaries to be an indefinitely large area.
   if (!PathBoundsDeciderUtil::InitPathBoundary(*reference_line_info_,
                                                &path_bound, init_sl_state_)) {
@@ -112,7 +113,8 @@ bool LaneChangePath::DecidePathBounds(std::vector<PathBoundary>* boundary) {
     return false;
   }
   if (!PathBoundsDeciderUtil::ExtendBoundaryByADC(
-          init_sl_state_, config_.extend_adc_buffer(), &path_bound)) {
+          *reference_line_info_, init_sl_state_, config_.extend_adc_buffer(),
+          &path_bound)) {
     AERROR << "Failed to decide a rough boundary based on adc.";
     return false;
   }
@@ -122,9 +124,12 @@ bool LaneChangePath::DecidePathBounds(std::vector<PathBoundary>* boundary) {
 
   PathBound temp_path_bound = path_bound;
   std::string blocking_obstacle_id;
+  std::vector<SLPolygon> obs_sl_polygons;
+  PathBoundsDeciderUtil::GetSLPolygons(*reference_line_info_, &obs_sl_polygons,
+                                       init_sl_state_);
   if (!PathBoundsDeciderUtil::GetBoundaryFromStaticObstacles(
-          *reference_line_info_, init_sl_state_, &path_bound,
-          &blocking_obstacle_id)) {
+          &obs_sl_polygons, init_sl_state_, &path_bound, &blocking_obstacle_id,
+          &path_narrowest_width)) {
     AERROR << "Failed to decide fine tune the boundaries after "
               "taking into consideration all static obstacles.";
     return false;
@@ -138,7 +143,7 @@ bool LaneChangePath::DecidePathBounds(std::vector<PathBoundary>* boundary) {
     path_bound.push_back(temp_path_bound[path_bound.size()]);
     counter++;
   }
-  path_bound.set_label("regular/pullover");
+  path_bound.set_label("regular/lane_change");
   path_bound.set_blocking_obstacle_id(blocking_obstacle_id);
   RecordDebugInfo(path_bound, path_bound.label(), reference_line_info_);
   return true;
@@ -160,7 +165,7 @@ bool LaneChangePath::OptimizePath(
     PathOptimizerUtil::CalculateAccBound(path_boundary, reference_line,
                                          &ddl_bounds);
     const double jerk_bound = PathOptimizerUtil::EstimateJerkBoundary(
-        std::fmax(init_sl_state_.first[1], 1.0));
+        std::fmax(init_sl_state_.first[1], 1e-12));
     std::vector<double> ref_l(path_boundary_size, 0);
     std::vector<double> weight_ref_l(path_boundary_size, 0);
 
@@ -198,7 +203,10 @@ bool LaneChangePath::AssessPath(std::vector<PathData>* candidate_path_data,
     if (PathAssessmentDeciderUtil::IsValidRegularPath(*reference_line_info_,
                                                       curr_path_data)) {
       SetPathInfo(&curr_path_data);
-      PathAssessmentDeciderUtil::TrimTailingOutLanePoints(&curr_path_data);
+      if (reference_line_info_->SDistanceToDestination() <
+          FLAGS_path_trim_destination_threshold) {
+        PathAssessmentDeciderUtil::TrimTailingOutLanePoints(&curr_path_data);
+      }
       if (curr_path_data.Empty()) {
         AINFO << "lane change path is empty after trimed";
         continue;

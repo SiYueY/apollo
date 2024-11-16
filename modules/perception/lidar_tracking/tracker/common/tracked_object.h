@@ -50,7 +50,8 @@ struct TrackedObject {
   void Reset(
       base::ObjectPtr obj_ptr, const Eigen::Affine3d& pose,
       const Eigen::Vector3d& global_to_local_offset = Eigen::Vector3d::Zero(),
-      const base::SensorInfo& sensor = base::SensorInfo());
+      const base::SensorInfo& sensor = base::SensorInfo(),
+      double timestamp = 0.0);
 
   /**
    * @brief Transform tracked data state to string
@@ -76,7 +77,8 @@ struct TrackedObject {
   void AttachObject(
       base::ObjectPtr obj_ptr, const Eigen::Affine3d& pose,
       const Eigen::Vector3d& global_to_local_offset = Eigen::Vector3d::Zero(),
-      const base::SensorInfo& sensor = base::SensorInfo());
+      const base::SensorInfo& sensor = base::SensorInfo(),
+      double timestamp = 0.0);
 
   /**
    * @brief Transform object cloud to world
@@ -137,6 +139,9 @@ struct TrackedObject {
   Eigen::Vector3d center;
   Eigen::Vector3d barycenter;
   Eigen::Vector3d anchor_point;
+  // center and corner points in object-detection original output
+  Eigen::Vector3d detection_center;
+  Eigen::Vector3d detection_corners[4];
 
   // oriented
   Eigen::Vector3d direction;
@@ -144,7 +149,11 @@ struct TrackedObject {
   Eigen::Vector3d size;
 
   base::ObjectType type = base::ObjectType::UNKNOWN;
+  // @brief probability for each type, required
+  std::vector<float> type_probs;
   bool is_background = false;
+
+  double timestamp = 0.0;
 
   // ***************************************************
   // measurement correlative information from measurement computer
@@ -153,6 +162,12 @@ struct TrackedObject {
   Eigen::Vector3d measured_center_velocity;
   Eigen::Vector3d measured_nearest_corner_velocity;  // no projection
   Eigen::Vector3d measured_corners_velocity[4];
+  Eigen::Vector3d measured_history_corners_velocity[4];
+  Eigen::Vector3d measured_history_center_velocity;
+  Eigen::Vector3d measured_detection_center_velocity;
+  Eigen::Vector3d measured_detection_history_center_velocity;
+  Eigen::Vector3d measured_detection_history_corners_velocity[4];
+  int measured_big_velocity_age;
 
   // ***************************************************
   // filter correlative information

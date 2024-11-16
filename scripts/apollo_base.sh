@@ -40,6 +40,8 @@ use_gpu=-1
 use_nvidia=-1
 use_amd=-1
 
+ENABLE_PROFILER=true
+
 function set_lib_path() {
   local CYBER_SETUP="${APOLLO_ROOT_DIR}/cyber/setup.bash"
   [ -e "${CYBER_SETUP}" ] && . "${CYBER_SETUP}"
@@ -52,6 +54,11 @@ function site_restore() {
   [[ -e "${TOP_DIR}/WORKSPACE.source" ]] && rm -f "${TOP_DIR}/WORKSPACE" && cp "${TOP_DIR}/WORKSPACE.source" "${TOP_DIR}/WORKSPACE"
   echo "" > "${TOP_DIR}/tools/package/rules_cc.patch"
   [[ -e "${TOP_DIR}/tools/proto/proto.bzl.tpl" ]] && rm -f "${TOP_DIR}/tools/proto/proto.bzl" && cp "${TOP_DIR}/tools/proto/proto.bzl.tpl" "${TOP_DIR}/tools/proto/proto.bzl"
+  if [[ -e "${TOP_DIR}/tools/package/dynamic_deps.bzl" ]]; then
+    echo "STATUS = 0" > "${TOP_DIR}/tools/package/dynamic_deps.bzl"
+    echo "SOURCE = {}" >> "${TOP_DIR}/tools/package/dynamic_deps.bzl"
+    echo "BINARY = {}" >> "${TOP_DIR}/tools/package/dynamic_deps.bzl"
+  fi
   if which buildtool > /dev/null 2>&1; then
     sudo apt remove -y apollo-neo-buildtool
   fi
@@ -82,6 +89,7 @@ function env_prepare() {
     sed -i 's/build --spawn_strategy=standalone/build --spawn_strategy=sandboxed/' "${TOP_DIR}/tools/bazel.rc"
     rm -rf "${TOP_DIR}/.cache"
   fi
+  rm -rf "${TOP_DIR}/dev"
   return 0
 }
 
@@ -562,31 +570,29 @@ function _determine_perception_disabled() {
 function _determine_localization_disabled() {
   if [ "${ARCH}" != "x86_64" ]; then
     # Skip msf for non-x86_64 platforms
-    DISABLED_TARGETS="${disabled} except //modules/localization/msf/..."
+    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/localization/msf/..."
   fi
 }
 
 function _determine_planning_disabled() {
   if [ "${USE_GPU}" -eq 0 ]; then
     DISABLED_TARGETS="${DISABLED_TARGETS} \
-        except //modules/planning/planning_base:planning_block"
-  fi
-}
-
-function _determine_map_disabled() {
-  if [ "${USE_GPU}" -eq 0 ]; then
-    DISABLED_TARGETS="${DISABLED_TARGETS} except //modules/map/pnc_map:cuda_pnc_util \
-                      except //modules/map/pnc_map:cuda_util_test"
+        except //modules/planning/planning_open_space:planning_block"
   fi
 }
 
 function determine_disabled_targets() {
+  if [[ -n "${CUSTOM_DISABLED_TARGETS}" ]]; then
+    disabled_targets=($(IFS=' ' echo "${CUSTOM_DISABLED_TARGETS}"))
+    for target in "${disabled_targets[@]}"; do
+      DISABLED_TARGETS="${DISABLED_TARGETS} except ${target}"
+    done
+  fi
   if [[ "$#" -eq 0 ]]; then
     _determine_drivers_disabled
     _determine_localization_disabled
     _determine_perception_disabled
     _determine_planning_disabled
-    _determine_map_disabled
     echo "${DISABLED_TARGETS}"
     return
   fi
@@ -604,9 +610,6 @@ function determine_disabled_targets() {
         ;;
       planning*)
         _determine_planning_disabled
-        ;;
-      map*)
-        _determine_map_disabled
         ;;
     esac
   done
@@ -703,6 +706,10 @@ function run_bazel() {
     CMDLINE_OPTIONS="${CMDLINE_OPTIONS} --define USE_ESD_CAN=${USE_ESD_CAN}"
   fi
 
+  if $ENABLE_PROFILER; then
+    CMDLINE_OPTIONS="${CMDLINE_OPTIONS} --define ENABLE_PROFILER=${ENABLE_PROFILER}"
+  fi
+
   CMDLINE_OPTIONS="$(echo ${CMDLINE_OPTIONS} | xargs)"
 
   local build_targets="$(determine_targets ${SHORTHAND_TARGETS})"
@@ -741,8 +748,17 @@ function run_bazel() {
   info "${TAB}$1 Targets: ${sp}${GREEN}${build_targets}${NO_COLOR}"
   info "${TAB}Disabled:      ${spaces}${YELLOW}${disabled_targets}${NO_COLOR}"
 
-  job_args="--copt=-mavx2 --host_copt=-mavx2 --jobs=${count} --local_ram_resources=HOST_RAM*0.7"
+  if [[ -n "${CUSTOM_JOB_ARGS}" ]]; then
+    job_args="${CUSTOM_JOB_ARGS}"
+  else
+    if [[ $(uname -m) == "x86_64" ]]; then
+      job_args="--copt=-mavx2 --host_copt=-mavx2 --jobs=${count} --local_ram_resources=HOST_RAM*0.7"
+    else
+      job_args="--copt=-march=native --host_copt=-march=native --jobs=${count} --local_ram_resources=HOST_RAM*0.7  --copt=-fPIC --host_copt=-fPIC"
+    fi
+  fi
   set -x
+  [[ ${1} == "Test" ]] && CMDLINE_OPTIONS="${CMDLINE_OPTIONS} --action_env APOLLO_CONF_PATH=${APOLLO_CONF_PATH}"
   bazel ${1,,} ${CMDLINE_OPTIONS} ${job_args} -- ${formatted_targets}
   set +x
 }

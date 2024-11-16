@@ -59,8 +59,8 @@ class PathData {
 
   const FrenetFramePath &frenet_frame_path() const;
 
-  const std::vector<std::tuple<double, PathPointType, double>> &
-  path_point_decision_guide() const;
+  const std::vector<std::tuple<double, PathPointType, double>>
+      &path_point_decision_guide() const;
 
   common::PathPoint GetPathPointWithPathS(const double s) const;
 
@@ -110,6 +110,10 @@ class PathData {
 
   const std::vector<common::PathPoint> &path_reference() const;
   void set_path_reference(const std::vector<common::PathPoint> &path_reference);
+  bool is_reverse_path() const { return is_reverse_path_; }
+  void set_is_reverse_path(bool is_reverse_path) {
+    is_reverse_path_ = is_reverse_path;
+  }
 
  private:
   /*
@@ -149,6 +153,7 @@ class PathData {
    *
    */
   bool is_optimized_towards_trajectory_reference_ = false;
+  bool is_reverse_path_ = false;
 
   // path reference
   std::vector<common::PathPoint> path_reference_;

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import CustomPopover from '@dreamview/dreamview-core/src/components/CustomPopover';
-import { IconIcNotApplicable, IconIcOverUsable } from '@dreamview/dreamview-ui';
+import { IconPark, Popover } from '@dreamview/dreamview-ui';
 import { useStyle, DynamicEffectButtonStatus } from './useStyle';
 
 export * from './useStyle';
@@ -47,10 +46,10 @@ function DynamicEffectButton(props: IDynamicEffectButton) {
     const icon =
         buttonBehavior?.icon ||
         {
-            [DynamicEffectButtonStatus.DISABLE]: <IconIcNotApplicable />,
-            [DynamicEffectButtonStatus.START]: <IconIcNotApplicable />,
-            [DynamicEffectButtonStatus.RUNNING]: <IconIcNotApplicable />,
-            [DynamicEffectButtonStatus.STOP]: <IconIcOverUsable />,
+            [DynamicEffectButtonStatus.DISABLE]: <IconPark name='IcNotApplicable' />,
+            [DynamicEffectButtonStatus.START]: <IconPark name='IcNotApplicable' />,
+            [DynamicEffectButtonStatus.RUNNING]: <IconPark name='IcNotApplicable' />,
+            [DynamicEffectButtonStatus.STOP]: <IconPark name='IcOverUsable' />,
         }[status];
 
     const onClick = () => {
@@ -86,7 +85,7 @@ function DynamicEffectButton(props: IDynamicEffectButton) {
 
     if (status === DynamicEffectButtonStatus.DISABLE) {
         return (
-            <CustomPopover
+            <Popover
                 trigger='hover'
                 content={(buttonBehavior as ButtonStatusType[DynamicEffectButtonStatus.DISABLE]).disabledMsg}
             >
@@ -94,7 +93,7 @@ function DynamicEffectButton(props: IDynamicEffectButton) {
                     <span>{icon}</span>
                     <span>{buttonBehavior.text}</span>
                 </div>
-            </CustomPopover>
+            </Popover>
         );
     }
 

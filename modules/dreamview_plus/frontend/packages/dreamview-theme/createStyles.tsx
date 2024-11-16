@@ -15,95 +15,50 @@
  **************************************************************************** */
 
 import { createMakeAndWithStyles } from 'tss-react';
-import React from 'react';
-import { CSSObject } from '@emotion/react';
-import { dreamviewColors } from './tokens/baseToken/colors';
-import baseToken from './tokens/baseToken';
-import components from './tokens/components';
-import util from './tokens/util';
+import React, { useMemo } from 'react';
+import { light, IDefaultTheme, drak, ITheme } from './tokens/baseToken';
 
-const defaultTheme = {
-    colors: dreamviewColors.light,
-    tokens: baseToken,
-    components,
-    util,
-};
-
-const context = React.createContext(null);
-
-type IDefaultTheme = typeof defaultTheme;
+const context = React.createContext<{
+    theme: ITheme;
+    tokens: IDefaultTheme;
+}>({
+    theme: 'light',
+    tokens: light,
+});
 
 interface ProviderProps {
-    config?: Partial<IDefaultTheme>;
+    theme?: ITheme;
 }
 
-const filterAdd = (origin: any, current: any) => {
-    const originKeys = Object.keys(origin);
-    const currentKeys = Object.keys(current);
-    const addKeys = currentKeys.filter((key: string) => !originKeys.includes(key));
-    return addKeys.reduce(
-        (result: any, currentKey: any) => ({
-            ...result,
-            [currentKey]: current[currentKey],
-        }),
-        {},
-    );
-};
+export function Provider(props: React.PropsWithChildren<ProviderProps>) {
+    const { theme = 'light' } = props;
 
-export const deepMerge = (origin: any, current: any) => {
-    const originKeys = Object.keys(origin);
-
-    const nextValue = (key: any, originValue: any, currentValue: any): any => {
-        if (!(key in currentValue)) {
-            return originValue[key];
-        }
-
-        const v = originValue[key];
-
-        if (!v) {
-            return null;
-        }
-
-        if (typeof currentValue[key] === 'string') {
-            return currentValue[key];
-        }
-        return deepMerge(originValue[key], currentValue[key]);
-    };
-
-    const mergeResult = originKeys.reduce(
-        (result, item) => ({
-            ...result,
-            [item]: nextValue(item, origin, current),
-        }),
-        {},
-    );
-    const addResult = filterAdd(origin, current);
-    return {
-        ...mergeResult,
-        ...addResult,
-    };
-};
-
-export function Provider<T>(props: React.PropsWithChildren<ProviderProps>) {
-    const { config } = props;
-    const hoc = React.useMemo(
+    const values = useMemo(
         () => ({
-            ...createMakeAndWithStyles({
-                useTheme: () => deepMerge(defaultTheme, config || {}) as Partial<IDefaultTheme> & T,
-            }),
+            theme,
+            tokens: {
+                light,
+                drak,
+            }[theme],
         }),
-        [JSON.stringify(config)],
+        [theme],
     );
 
-    return <context.Provider value={hoc}>{props.children}</context.Provider>;
+    return <context.Provider value={values}>{props.children}</context.Provider>;
 }
 
 export function useThemeContext() {
     return React.useContext(context);
 }
 
-export const useMakeStyle = (styleFuc: (theme: IDefaultTheme, prop?: any) => CSSObject) => {
-    const { makeStyles } = useThemeContext();
-    const hoc = React.useMemo(() => makeStyles()(styleFuc), [makeStyles]);
-    return hoc;
-};
+function useTheme() {
+    return React.useContext(context).tokens;
+}
+
+const { makeStyles: initUseStyle } = createMakeAndWithStyles<IDefaultTheme>({
+    useTheme,
+});
+
+export const makeStylesWithProps = initUseStyle;
+
+export const makeStyles = initUseStyle();

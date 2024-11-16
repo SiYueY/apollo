@@ -1,5 +1,5 @@
-import { BehaviorSubject, filter, finalize, from, map, Observable, Subject, tap } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { BehaviorSubject, filter, finalize, from, map, Observable, Subject, tap, timer } from 'rxjs';
+import { debounceTime, throttle } from 'rxjs/operators';
 import Logger from '@dreamview/log';
 import { isEqual, isNil } from 'lodash';
 import WorkerPoolManager from '@dreamview/dreamview-core/src/worker/WorkerPoolManager';
@@ -14,6 +14,7 @@ import ChildWsWorkerClass from '@dreamview/dreamview-core/src/worker/child-ws.wo
 import { WorkerFactory } from '@dreamview/dreamview-core/src/worker/WorkerFactory';
 import DecoderWorkerClass from '@dreamview/dreamview-core/src/worker/decoder.worker-class';
 import { StreamDataNames } from '@dreamview/dreamview-core/src/services/api/types';
+import { perfMonitor, DreamviewAnalysis } from '@dreamview/dreamview-analysis';
 import { WebSocketConnection } from './websocket-connect.service';
 import { config, requestIdleCallbackTimeout } from './constant';
 import {
@@ -36,33 +37,64 @@ import { WebSocketPlugin } from './plugins/type';
 import MapMessageHandlerPlugin from './plugins/MapMessageHandlerPlugin';
 import { indexedDBStorage } from '../../util/indexedDB/IndexedDBStorage';
 import { ProtoLoader } from '../../util/ProtoLoader';
+import { performanceController } from '../../util/PerformanceMonitor';
+import { ConnectionManager } from './connection-manager';
 
 const logger = Logger.getInstance('WebSocketManager');
 
 const dataFrequencyMs = 100;
+
+// 取消订阅延时，防抖
+const unsubscribeDelay = 300;
+
 interface IArrayItem {
     dataName: StreamDataNames;
     protoPath: string;
     channelName?: string;
 }
+
+export enum IEventName {
+    ChannelTotal = 'channelTotal',
+    ChannelChange = 'channelChange',
+    BaseProtoChange = 'baseProtoChange',
+}
+
 export class WebSocketManager {
+    connectionManager = new ConnectionManager();
+
     private childWsManagerQueue = new MessageQueue<string>({
         name: 'WebSocketManager',
     });
 
-    private readonly mainConnection: WebSocketConnection;
+    readonly mainConnection: WebSocketConnection;
 
     private readonly pluginConnection: WebSocketConnection;
 
     private readonly protoLoader = new ProtoLoader();
 
+    private registeInitEvent = new Map();
+
     private activeWorkers: { [key: string]: ChildWsWorkerClass } = {};
+
+    // 子socket的数据流频率控制
+    private throttleDuration = new BehaviorSubject<number>(100);
+
+    // 当前数据帧率
+    private frameRate = 10;
 
     private pluginManager = new PluginManager();
 
     private metadata: MetadataItem[] = [];
 
     private metadataSubject: BehaviorSubject<MetadataItem[]> = new BehaviorSubject<MetadataItem[]>([]);
+
+    readonly initProtoFiles: string[] = [
+        'modules/common_msgs/basic_msgs/error_code.proto',
+        'modules/common_msgs/basic_msgs/header.proto',
+        'modules/common_msgs/dreamview_msgs/hmi_status.proto',
+        'modules/common_msgs/basic_msgs/geometry.proto',
+        'modules/common_msgs/map_msgs/map_id.proto',
+    ];
 
     private dataSubjects: MultiKeyMap<
         { name: string; channel?: Emptyable<string> },
@@ -93,11 +125,13 @@ export class WebSocketManager {
             this.handleMessage(<HandleMessageType>msg, SocketNameEnum.PLUGIN),
         );
 
+        this.connectionManager.set(SocketNameEnum.MAIN, this.mainConnection);
+        this.connectionManager.set(SocketNameEnum.PLUGIN, this.pluginConnection);
+
         this.loadInitProtoFiles();
 
         this.metadataSubject.pipe(debounceTime(200)).subscribe(() => {
             this.consumeChildWsManagerQueue();
-            // console.log("metadata: ", this.metadata);
             const protoList: {
                 level0: IArrayItem[];
                 level1: IArrayItem[];
@@ -137,6 +171,10 @@ export class WebSocketManager {
             });
 
             if (this.metadata.length > 0) {
+                this.triggerEvent(
+                    IEventName.ChannelTotal,
+                    protoList.level0.length + protoList.level1.length + protoList.level2.length,
+                );
                 protoList.level0.forEach((item) => {
                     this.protoLoader
                         .loadAndCacheProto(item.protoPath, {
@@ -144,6 +182,9 @@ export class WebSocketManager {
                         })
                         .catch((error) => {
                             logger.error(error);
+                        })
+                        .finally(() => {
+                            this.triggerEvent(IEventName.ChannelChange);
                         });
                 });
 
@@ -154,6 +195,9 @@ export class WebSocketManager {
                         })
                         .catch((error) => {
                             logger.error(error);
+                        })
+                        .finally(() => {
+                            this.triggerEvent(IEventName.ChannelChange);
                         });
                 });
                 protoList.level2.forEach((item) => {
@@ -164,36 +208,87 @@ export class WebSocketManager {
                         })
                         .catch((error) => {
                             logger.error(error);
+                        })
+                        .finally(() => {
+                            this.triggerEvent(IEventName.ChannelChange);
                         });
                 });
             }
         });
-
         if (process.env.NODE_ENV === 'development') {
             setInterval(() => {
                 this.workerPoolManager.visualize();
             }, 1000);
         }
+
+        performanceController.logicController$.subscribe((isHighLoad) => {
+            logger.debug(`当前处于${isHighLoad ? '高负载' : '正常'}状态`);
+            if (isHighLoad && this.frameRate > 5) {
+                this.frameRate -= 1;
+            } else if (!isHighLoad && this.frameRate < 10) {
+                this.frameRate += 1;
+            }
+            DreamviewAnalysis.logData('wsFrameRate', this.frameRate, {
+                useStatistics: {
+                    useMax: true,
+                    useMin: true,
+                },
+            });
+            this.throttleDuration.next(Math.floor(1000 / this.frameRate));
+        });
+    }
+
+    // 初始化其他socket请求用于请求响应
+    public initBySocketName(socketName: SocketNameEnum) {
+        if (!this.connectionManager.has(socketName)) {
+            this.connectionManager
+                .get(socketName)
+                .receivedMessages$.subscribe((msg) => this.handleMessage(<HandleMessageType>msg, socketName));
+        }
     }
 
     loadInitProtoFiles() {
-        const initProtoFiles: string[] = [
-            'modules/common_msgs/basic_msgs/error_code.proto',
-            'modules/common_msgs/basic_msgs/header.proto',
-            'modules/common_msgs/dreamview_msgs/hmi_status.proto',
-            'modules/common_msgs/basic_msgs/geometry.proto',
-            'modules/common_msgs/map_msgs/map_id.proto',
-        ];
-
-        initProtoFiles.forEach((file) => {
-            this.protoLoader.loadProto(file).catch((error) => {
-                logger.error(error);
-            });
+        this.initProtoFiles.forEach((file) => {
+            this.protoLoader
+                .loadProto(file)
+                .catch((error) => {
+                    logger.error(error);
+                })
+                .finally(() => {
+                    this.triggerEvent(IEventName.BaseProtoChange);
+                });
         });
     }
 
     public registerPlugin(plugins: WebSocketPlugin[]): void {
         plugins.forEach((plugin) => this.pluginManager.registerPlugin(plugin));
+    }
+
+    private triggerEvent(eventName: IEventName, value?: any) {
+        this.registeInitEvent.get(eventName)?.forEach((callback: any) => {
+            callback(value);
+        });
+    }
+
+    public addEventListener(eventName: IEventName, callback: any) {
+        let events = this.registeInitEvent.get(eventName);
+        if (!events) {
+            this.registeInitEvent.set(eventName, []);
+            events = this.registeInitEvent.get(eventName);
+        }
+        events.push(callback);
+    }
+
+    public removeEventListener(eventName: IEventName, callback: any) {
+        const events = this.registeInitEvent.get(eventName);
+        if (!events) {
+            this.registeInitEvent.set(eventName, []);
+        } else {
+            this.registeInitEvent.set(
+                eventName,
+                events.filter((item: any) => item !== callback),
+            );
+        }
     }
 
     handleMessage(msg: HandleMessageType, socketName: SocketNameEnum) {
@@ -358,27 +453,64 @@ export class WebSocketManager {
             ).connect();
         }
 
-        this.activeWorkers[name].socketMessage$.subscribe((message) => {
-            if (isMessageType(message, 'SOCKET_MESSAGE')) {
-                const { data } = message.payload as StreamMessage;
-                this.workerPoolManager
-                    .dispatchTask({
-                        type: 'SOCKET_STREAM_MESSAGE',
-                        payload: <StreamMessage>message.payload,
-                        transferList: [data.buffer],
-                    })
-                    .then(
-                        (response) => {
-                            if (response.success) {
-                                this.dataSubjects.getByExactKey({ name })?.next(response.result);
-                            }
-                        },
-                        (error) => {
-                            logger.error(error);
-                        },
-                    );
-            }
-        });
+        this.activeWorkers[name].socketMessage$
+            .pipe(throttle(() => timer(this.throttleDuration.value)))
+            .subscribe((message) => {
+                if (isMessageType(message, 'SOCKET_MESSAGE')) {
+                    const {
+                        data,
+                        // performance,
+                    } = message.payload as StreamMessage;
+                    // 性能分析
+                    // if (performance) {
+                    //     const now = Date.now();
+                    //     const start = performance.startTimestamp;
+                    //     console.log(`数据${name}子通讯传输的数据：${now - start}ms`);
+                    // }
+                    this.workerPoolManager
+                        .dispatchTask(
+                            {
+                                type: 'SOCKET_STREAM_MESSAGE',
+                                payload: <StreamMessage>message.payload,
+                                transferList: [data.buffer],
+                            },
+                            {
+                                callback: () => {
+                                    perfMonitor.mark(`dataDeserializeStart-${name}`);
+                                },
+                            },
+                        )
+                        .then(
+                            (response) => {
+                                // 性能测试：数据反序列化传输时长
+                                // @ts-ignore
+                                // if (response?.result?.performance) {
+                                //     const now = Date.now();
+                                //     const start = response?.result?.performance.startTimestamp;
+                                //     console.log(
+                                //         // @ts-ignore
+                                //         `数据${response?.result?.dataName}${
+                                //             // @ts-ignore
+                                //             response?.result?.channelName
+                                //         }反序列化传输返回的数据：${now - start}ms`,
+                                //     );
+                                // }
+                                if (response.success) {
+                                    perfMonitor.mark(`dataDeserializeEnd-${name}`);
+                                    perfMonitor.measure(
+                                        `dataDeserialize-${name}`,
+                                        `dataDeserializeStart-${name}`,
+                                        `dataDeserializeEnd-${name}`,
+                                    );
+                                    this.dataSubjects.getByExactKey({ name })?.next(response.result);
+                                }
+                            },
+                            (error) => {
+                                logger.error(error);
+                            },
+                        );
+                }
+            });
     }
 
     public sendSubscriptionMessage<Param>(
@@ -437,11 +569,11 @@ export class WebSocketManager {
 
     private consumeChildWsManagerQueue() {
         // 用requestIdleCallback排队执行的函数
-        const idleConsume = (deadline: IdleDeadline) => {
+        const idleConsume = () => {
             let maxIterations = this.childWsManagerQueue.size;
 
             // 仅当浏览器空闲时，才开始处理队列中的消息
-            while (deadline.timeRemaining() > 0 && !this.childWsManagerQueue.isEmpty() && maxIterations > 0) {
+            while (!this.childWsManagerQueue.isEmpty() && maxIterations > 0) {
                 const name = this.childWsManagerQueue.dequeue();
                 // 检查 metadata 是否存在
                 const metadata = this.metadata.find((m) => m.dataName === name);
@@ -450,10 +582,10 @@ export class WebSocketManager {
                 if (metadata && this.activeWorkers[name] === undefined) {
                     logger.debug(`Connecting to ${name}`);
                     this.connectChildSocket(name);
+                } else {
+                    // metadata中没有相关子消息，重新放回队列
+                    this.childWsManagerQueue.enqueue(name);
                 }
-
-                // 处理完后，将 name 放回队列末尾
-                this.childWsManagerQueue.enqueue(name);
                 maxIterations -= 1;
             }
         };
@@ -507,7 +639,7 @@ export class WebSocketManager {
                             );
                             this.dataSubjects.delete({ name }, (countedSubject) => countedSubject.complete());
                         }
-                    }, 5000);
+                    }, unsubscribeDelay);
                 }
             }),
         );
@@ -566,7 +698,7 @@ export class WebSocketManager {
                                 countedSubject.complete(),
                             );
                         }
-                    }, 5000);
+                    }, unsubscribeDelay);
                 }
 
                 // 如果没有下游订阅者，就取消上游数据源的订阅
@@ -640,6 +772,9 @@ export class WebSocketManager {
             resolver: (response: ResponseMessage<Res>) => {
                 responseSubject.next(response);
             },
+            reject: (response: ResponseMessage<Res>) => {
+                responseSubject.error(response);
+            },
             shouldDelete: false,
         };
         this.sendMessage(
@@ -662,7 +797,7 @@ export class WebSocketManager {
     }
 
     public sendMessage<T>(request: RequestMessage<T>, socket: SocketNameEnum = SocketNameEnum.MAIN): void {
-        const connection = socket === SocketNameEnum.MAIN ? this.mainConnection : this.pluginConnection;
+        const connection = this.connectionManager.get(socket);
 
         connection.sendMessage({ ...request });
     }

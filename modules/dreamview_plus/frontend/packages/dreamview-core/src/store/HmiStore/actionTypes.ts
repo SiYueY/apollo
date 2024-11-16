@@ -118,6 +118,12 @@ export enum CURRENT_MODE {
     PERCEPTION = 'Perception',
     PNC = 'Pnc',
     VEHICLE_TEST = 'Vehicle Test',
+    MAP_COLLECT = 'Map Collect',
+    MAP_EDITOR = 'Map Editor',
+    CAMERA_CALIBRATION = 'Camera Calibration',
+    LiDAR_CALIBRATION = 'Lidar Calibration',
+    DYNAMICS_CALIBRATION = 'Dynamics Calibration',
+    CANBUS_DEBUG = 'Canbus Debug',
 }
 
 export enum PREPROCESS_STATUS {
@@ -127,6 +133,7 @@ export enum PREPROCESS_STATUS {
 }
 
 export enum HMIModeOperation {
+    None = 'None',
     PLAY_RECORDER = 'Record',
     // SIM_DEBUG = 'SIM_DEBUG',
     SIM_CONTROL = 'Sim_Control',
@@ -188,6 +195,13 @@ export type IInitState = {
     dockerImage: string;
     currentDynamicModel: string;
     otherComponents: Record<
+        string,
+        {
+            message: string;
+            status: SIM_CONTROL_STATUS;
+        }
+    >;
+    simOtherComponents: Record<
         string,
         {
             message: string;

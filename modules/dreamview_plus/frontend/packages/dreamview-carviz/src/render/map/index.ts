@@ -45,17 +45,20 @@ class Map {
 
     private coordinates;
 
-    constructor(scene, text, option, coordinates) {
+    private colors;
+
+    constructor(scene, text, option, coordinates, colors) {
+        this.colors = colors;
         this.scene = scene;
         this.text = text;
         this.option = option;
         this.coordinates = coordinates;
         this.trafficSignal = new TrafficSignal(scene, coordinates);
         this.stopSign = new StopSign(scene, coordinates);
-        this.yieldSignal = new YieldSignal(scene, coordinates);
+        this.yieldSignal = new YieldSignal(scene, coordinates, this.colors);
         this.clearArea = new ClearArea(scene, coordinates);
         this.crosswalk = new Crosswalk(scene, coordinates);
-        this.lane = new Lane(scene, text, option, coordinates);
+        this.lane = new Lane(scene, text, option, coordinates, this.colors);
         this.junction = new Junction(scene, coordinates);
         this.pncJunction = new PncJunction(scene, coordinates);
         this.road = new Road(scene, coordinates);
@@ -189,8 +192,8 @@ class Map {
                 {
                     size,
                     divisions: size / 5,
-                    colorCenterLine: 0xffffff,
-                    colorGrid: 0xffffff,
+                    colorCenterLine: this.colors.gridColor,
+                    colorGrid: this.colors.gridColor,
                 },
                 position,
             );

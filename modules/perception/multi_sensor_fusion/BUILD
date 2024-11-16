@@ -82,6 +82,7 @@ apollo_cc_library(
         "interface/base_tracker.h",
         "interface/base_type_fusion.h",
     ],
+    copts = PERCEPTION_COPTS + if_profiler() + ["-DENABLE_PROFILER=1"],
     deps = [
         "//cyber",
         "//modules/common/math",
@@ -112,7 +113,7 @@ apollo_component(
     name = "libmulti_sensor_fusion.so",
     srcs = ["multi_sensor_fusion_component.cc"],
     hdrs = ["multi_sensor_fusion_component.h"],
-    copts = PERCEPTION_COPTS + if_profiler(),
+    copts = PERCEPTION_COPTS + if_profiler() + ["-DENABLE_PROFILER=1"],
     deps = [
         "//cyber",
         ":apollo_perception_multi_sensor_fusion",
@@ -135,52 +136,6 @@ apollo_cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
-
-# todo(zero): need fix
-# apollo_cc_test(
-#     name = "sensor_test",
-#     size = "small",
-#     srcs = ["base/sensor_test.cc"],
-#     deps = [
-#         ":apollo_perception_multi_sensor_fusion",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
-
-# todo(zero): need fix
-# apollo_cc_test(
-#     name = "sensor_object_test",
-#     size = "small",
-#     srcs = ["base/sensor_object_test.cc"],
-#     deps = [
-#         ":apollo_perception_multi_sensor_fusion",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
-
-# apollo_cc_test(
-#     name = "sensor_data_manager_test",
-#     size = "small",
-#     srcs = ["base/sensor_data_manager_test.cc"],
-#     data = [
-#         "//modules/perception/data:perception_testdata",
-#     ],
-#     deps = [
-#         ":apollo_perception_multi_sensor_fusion",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
-
-# todo(zero): need fix
-# apollo_cc_test(
-#     name = "track_test",
-#     size = "small",
-#     srcs = ["base/track_test.cc"],
-#     deps = [
-#         ":apollo_perception_multi_sensor_fusion",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
 
 apollo_cc_test(
     name = "camera_util_test",
@@ -272,17 +227,6 @@ apollo_cc_test(
     ],
 )
 
-# todo(zero): need fix
-# apollo_cc_test(
-#     name = "kalman_motion_fusion_test",
-#     size = "small",
-#     srcs = ["fusion/data_fusion/motion_fusion/kalman_motion_fusion/kalman_motion_fusion_test.cc"],
-#     deps = [
-#         ":apollo_perception_multi_sensor_fusion",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
-
 apollo_cc_test(
     name = "pbf_shape_fusion_test",
     size = "small",
@@ -331,30 +275,17 @@ apollo_cc_test(
 
 # ignore temporarily TODO:// need fix logic
 
-# apollo_cc_test(
-#     name = "probabilistic_fusion_test",
-#     size = "small",
-#     srcs = ["fusion/fusion_system/probabilistic_fusion/probabilistic_fusion_test.cc"],
-#     copts = ["-fno-access-control"],
-#     deps = [
-#         ":apollo_perception_multi_sensor_fusion",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-#     linkstatic = True,
-# )
-
-# todo(zero)
-# apollo_cc_test(
-#     name = "pbf_gatekeeper_test",
-#     size = "small",
-#     srcs = ["fusion/gatekeeper/pbf_gatekeeper/pbf_gatekeeper_test.cc"],
-#     deps = [
-#         ":apollo_perception_multi_sensor_fusion",
-#         "//modules/perception/common/sensor_manager",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
-
+apollo_cc_test(
+    name = "probabilistic_fusion_test",
+    size = "small",
+    srcs = ["fusion/fusion_system/probabilistic_fusion/probabilistic_fusion_test.cc"],
+    copts = ["-fno-access-control"],
+    deps = [
+        ":apollo_perception_multi_sensor_fusion",
+        "@com_google_googletest//:gtest_main",
+    ],
+    linkstatic = True,
+)
 
 apollo_package()
 

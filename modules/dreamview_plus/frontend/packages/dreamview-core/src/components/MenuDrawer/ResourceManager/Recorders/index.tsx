@@ -39,9 +39,19 @@ function Operations(props: IOperations) {
     const onDownload = useCallback(() => {
         // do download
         if (isPluginConnected) {
-            usSubScribe.current.do = pluginApi?.downloadRecord(recordId, recordId).subscribe((r) => {
-                onUpdateDownloadProgress(r);
-            });
+            let res: any = {};
+            usSubScribe.current.do = pluginApi?.downloadRecord(recordId, recordId).subscribe(
+                (r) => {
+                    onUpdateDownloadProgress(r);
+                    res = r;
+                },
+                () => {
+                    onUpdateDownloadProgress({
+                        ...res,
+                        status: ENUM_DOWNLOAD_STATUS.Fail,
+                    });
+                },
+            );
         }
     }, [isPluginConnected, pluginApi]);
 
@@ -156,7 +166,9 @@ function Recorders() {
             const recordId = r.resource_id;
             const record = prev[recordId];
             const percentage = Math.floor(r.percentage);
-            if (r.status === 'downloaded') {
+            if (r.status === ENUM_DOWNLOAD_STATUS.Fail) {
+                record.status = ENUM_DOWNLOAD_STATUS.Fail;
+            } else if (r.status === 'downloaded') {
                 // if (percentage === 100) {
                 record.status = ENUM_DOWNLOAD_STATUS.DOWNLOADED;
                 record.percentage = percentage;
@@ -169,12 +181,10 @@ function Recorders() {
     }, []);
 
     const activeIndex = useMemo(
-        () => ({
-            activeIndex: data.findIndex((item) => item.name === currentRecordId) + 1,
-        }),
+        () => data.findIndex((item) => item.name === currentRecordId) + 1,
         [data, currentRecordId],
     );
-    const { classes } = useTableHover()(activeIndex);
+    const { classes } = useTableHover(activeIndex);
 
     const columns = useMemo(
         () => getColumns(t, refreshList, updateDownloadProgress, currentRecordId),

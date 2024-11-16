@@ -20,6 +20,9 @@ TOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source "${TOP_DIR}/scripts/apollo_base.sh"
 
 mkdir -p /opt/apollo/neo/src
+
+sudo cp -f /etc/ld.so.conf.d/apollo.conf /etc/ld.so.conf.d/apollo_source.conf
+
 dpkg -l apollo-neo-buildtool >/dev/null 2>&1
 # install buildtool
 [[ $? -ne 0 ]] && set -e && sudo rm -rf /etc/apt/keyrings/apolloauto.gpg && \
@@ -33,22 +36,20 @@ dpkg -l apollo-neo-buildtool >/dev/null 2>&1
     sudo touch /.installed && sudo sed -i 's/#include "flann\/general\.h"/#include <\/usr\/include\/flann\/general\.h>/g' /usr/include/flann/util/params.h
 
 # install dv plugins
-mkdir ~/apollo_tmp
-cd ~/apollo_tmp
-cp -r /apollo/modules ./
-cp -r /apollo/cyber ./
-if [ -e "/apollo/.workspace.json" ]; then
-    cp /apollo/.workspace.json ./
-fi
-sudo rm -rf modules/studio_connector
+set +e
+buildtool reinstall 3rd-tf2 3rd-civetweb 3rd-ad-rss-lib
+buildtool reinstall studio-connector >/dev/null 2>&1
+buildtool reinstall sim-obstacle >/dev/null 2>&1
+set -e
 
-buildtool init
-buildtool install --legacy sim-obstacle studio-connector
+sudo cp -f /etc/ld.so.conf.d/apollo.conf /etc/ld.so.conf.d/apollo_pkg.conf
 
-# remove buildtool and tmp dir
+# remove buildtool
 sudo apt remove -y apollo-neo-buildtool
-rm -rf ~/apollo_tmp
+
 mv /opt/apollo/neo/setup.sh.bak /opt/apollo/neo/setup.sh
+
+sudo ldconfig
 
 ok "Successfully install dreamview plugins."
 ok "Please restart dreamview. Enjoy!"

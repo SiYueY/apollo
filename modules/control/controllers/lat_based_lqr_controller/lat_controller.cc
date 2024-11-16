@@ -58,22 +58,17 @@ std::string GetLogFileName() {
 }
 
 void WriteHeaders(std::ofstream &file_stream) {
-  file_stream << "current_lateral_error,"
-              << "current_ref_heading,"
-              << "current_heading,"
-              << "current_heading_error,"
-              << "heading_error_rate,"
-              << "lateral_error_rate,"
-              << "current_curvature,"
-              << "steer_angle,"
+  file_stream << "current_lateral_error," << "current_ref_heading,"
+              << "current_heading," << "current_heading_error,"
+              << "heading_error_rate," << "lateral_error_rate,"
+              << "current_curvature," << "steer_angle,"
               << "steer_angle_feedforward,"
               << "steer_angle_lateral_contribution,"
               << "steer_angle_lateral_rate_contribution,"
               << "steer_angle_heading_contribution,"
               << "steer_angle_heading_rate_contribution,"
-              << "steer_angle_feedback,"
-              << "steering_position,"
-              << "v" << std::endl;
+              << "steer_angle_feedback," << "steering_position," << "v"
+              << std::endl;
 }
 }  // namespace
 
@@ -162,11 +157,8 @@ void LatController::ProcessLogs(const SimpleLateralDebug *debug,
 
 void LatController::LogInitParameters() {
   AINFO << name_ << " begin.";
-  AINFO << "[LatController parameters]"
-        << " mass_: " << mass_ << ","
-        << " iz_: " << iz_ << ","
-        << " lf_: " << lf_ << ","
-        << " lr_: " << lr_;
+  AINFO << "[LatController parameters]" << " mass_: " << mass_ << ","
+        << " iz_: " << iz_ << "," << " lf_: " << lf_ << "," << " lr_: " << lr_;
 }
 
 void LatController::InitializeFilters() {
@@ -449,7 +441,7 @@ Status LatController::ComputeControlCommand(
 
   // Update state = [Lateral Error, Lateral Error Rate, Heading Error, Heading
   // Error Rate, preview lateral error1 , preview lateral error2, ...]
-  UpdateState(debug);
+  UpdateState(debug, chassis);
 
   UpdateMatrix();
 
@@ -470,6 +462,8 @@ Status LatController::ComputeControlCommand(
     }
   }
 
+  uint num_iteration;
+  double result_diff;
   // Add gain scheduler for higher speed steering
   if (FLAGS_enable_gain_scheduler) {
     matrix_q_updated_(0, 0) =
@@ -480,12 +474,16 @@ Status LatController::ComputeControlCommand(
                               std::fabs(vehicle_state->linear_velocity()));
     common::math::SolveLQRProblem(matrix_adc_, matrix_bdc_, matrix_q_updated_,
                                   matrix_r_, lqr_eps_, lqr_max_iteration_,
-                                  &matrix_k_);
+                                  &matrix_k_, &num_iteration, &result_diff);
   } else {
     common::math::SolveLQRProblem(matrix_adc_, matrix_bdc_, matrix_q_,
                                   matrix_r_, lqr_eps_, lqr_max_iteration_,
-                                  &matrix_k_);
+                                  &matrix_k_, &num_iteration, &result_diff);
   }
+
+  ADEBUG << "LQR num_iteration is " << num_iteration
+        << ", max iteration threshold is " << lqr_max_iteration_
+        << "; result_diff is " << result_diff;
 
   // feedback = - K * state
   // Convert vehicle steer angle from rad to degree and then to steer degree
@@ -654,21 +652,23 @@ Status LatController::Reset() {
   return Status::OK();
 }
 
-void LatController::UpdateState(SimpleLateralDebug *debug) {
+void LatController::UpdateState(SimpleLateralDebug *debug,
+                                const canbus::Chassis *chassis) {
   auto vehicle_state = injector_->vehicle_state();
   if (FLAGS_use_navigation_mode) {
     ComputeLateralErrors(
         0.0, 0.0, driving_orientation_, vehicle_state->linear_velocity(),
         vehicle_state->angular_velocity(), vehicle_state->linear_acceleration(),
-        trajectory_analyzer_, debug);
+        trajectory_analyzer_, debug, chassis);
   } else {
     // Transform the coordinate of the vehicle states from the center of the
     // rear-axis to the center of mass, if conditions matched
     const auto &com = vehicle_state->ComputeCOMPosition(lr_);
-    ComputeLateralErrors(
-        com.x(), com.y(), driving_orientation_,
-        vehicle_state->linear_velocity(), vehicle_state->angular_velocity(),
-        vehicle_state->linear_acceleration(), trajectory_analyzer_, debug);
+    ComputeLateralErrors(com.x(), com.y(), driving_orientation_,
+                         vehicle_state->linear_velocity(),
+                         vehicle_state->angular_velocity(),
+                         vehicle_state->linear_acceleration(),
+                         trajectory_analyzer_, debug, chassis);
   }
 
   // State matrix update;
@@ -773,7 +773,8 @@ double LatController::ComputeFeedForward(double ref_curvature) const {
 void LatController::ComputeLateralErrors(
     const double x, const double y, const double theta, const double linear_v,
     const double angular_v, const double linear_a,
-    const TrajectoryAnalyzer &trajectory_analyzer, SimpleLateralDebug *debug) {
+    const TrajectoryAnalyzer &trajectory_analyzer, SimpleLateralDebug *debug,
+    const canbus::Chassis *chassis) {
   TrajectoryPoint target_point;
 
   if (lat_based_lqr_controller_conf_.query_time_nearest_point_only()) {
@@ -873,8 +874,13 @@ void LatController::ComputeLateralErrors(
       lateral_error_dot_dot = -lateral_error_dot_dot;
     }
   }
+  auto centripetal_acceleration =
+      linear_v * linear_v / wheelbase_ *
+      std::tan(chassis->steering_percentage() / 100 *
+               vehicle_param_.max_steer_angle() / steer_ratio_);
   debug->set_lateral_error_rate(lateral_error_dot);
   debug->set_lateral_acceleration(lateral_error_dot_dot);
+  debug->set_lateral_centripetal_acceleration(centripetal_acceleration);
   debug->set_lateral_jerk(
       (debug->lateral_acceleration() - previous_lateral_acceleration_) / ts_);
   previous_lateral_acceleration_ = debug->lateral_acceleration();

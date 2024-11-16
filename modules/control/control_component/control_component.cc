@@ -55,12 +55,15 @@ bool ControlComponent::Init() {
 
   // initial controller agent when not using control submodules
   ADEBUG << "FLAGS_use_control_submodules: " << FLAGS_use_control_submodules;
-  if (!FLAGS_use_control_submodules &&
-      !control_task_agent_.Init(injector_, control_pipeline_).ok()) {
-    // set controller
-    ADEBUG << "original control";
-    monitor_logger_buffer_.ERROR("Control init controller failed! Stopping...");
-    return false;
+  if (!FLAGS_is_control_ut_test_mode) {
+    if (!FLAGS_use_control_submodules &&
+        !control_task_agent_.Init(injector_, control_pipeline_).ok()) {
+      // set controller
+      ADEBUG << "original control";
+      monitor_logger_buffer_.ERROR(
+          "Control init controller failed! Stopping...");
+      return false;
+    }
   }
 
   cyber::ReaderConfig chassis_reader_config;
@@ -115,6 +118,9 @@ bool ControlComponent::Init() {
         node_->CreateWriter<LocalView>(FLAGS_control_local_view_topic);
     ACHECK(local_view_writer_ != nullptr);
   }
+  control_interactive_writer_ = node_->CreateWriter<ControlInteractiveMsg>(
+      FLAGS_control_interative_topic);
+  ACHECK(control_interactive_writer_ != nullptr);
 
   // set initial vehicle state by cmd
   // need to sleep, because advertised channel is not ready immediately
@@ -275,8 +281,7 @@ Status ControlComponent::ProduceControlCommand(
     ADEBUG << "status_compute is " << status_compute;
 
     if (!status_compute.ok()) {
-      AERROR << "Control main function failed"
-             << " with localization: "
+      AERROR << "Control main function failed" << " with localization: "
              << local_view_.localization().ShortDebugString()
              << " with chassis: " << local_view_.chassis().ShortDebugString()
              << " with trajectory: "
@@ -297,6 +302,9 @@ Status ControlComponent::ProduceControlCommand(
     control_command->set_throttle(0);
     control_command->set_brake(FLAGS_soft_estop_brake);
     control_command->set_gear_location(Chassis::GEAR_DRIVE);
+    previous_steering_command_ =
+        injector_->previous_control_command_mutable()->steering_target();
+    control_command->set_steering_target(previous_steering_command_);
   }
   // check signal
   if (local_view_.trajectory().decision().has_vehicle_signal()) {
@@ -309,10 +317,13 @@ Status ControlComponent::ProduceControlCommand(
 bool ControlComponent::Proc() {
   const auto start_time = Clock::Now();
 
+  injector_->control_debug_info_clear();
+
   chassis_reader_->Observe();
   const auto &chassis_msg = chassis_reader_->GetLatestObserved();
   if (chassis_msg == nullptr) {
     AERROR << "Chassis msg is not ready!";
+    injector_->set_control_process(false);
     return false;
   }
   OnChassis(chassis_msg);
@@ -337,12 +348,13 @@ bool ControlComponent::Proc() {
     ADEBUG << "Planning command status msg is \n"
            << planning_command_status_.ShortDebugString();
   }
-  injector_->Set_planning_command_status(planning_command_status_);
+  injector_->set_planning_command_status(planning_command_status_);
 
   localization_reader_->Observe();
   const auto &localization_msg = localization_reader_->GetLatestObserved();
   if (localization_msg == nullptr) {
     AERROR << "localization msg is not ready!";
+    injector_->set_control_process(false);
     return false;
   }
   OnLocalization(localization_msg);
@@ -400,8 +412,16 @@ bool ControlComponent::Proc() {
   if (FLAGS_is_control_test_mode && FLAGS_control_test_duration > 0 &&
       (start_time - init_time_).ToSecond() > FLAGS_control_test_duration) {
     AERROR << "Control finished testing. exit";
+    injector_->set_control_process(false);
     return false;
   }
+
+  injector_->set_control_process(true);
+
+  injector_->mutable_control_debug_info()
+      ->mutable_control_component_debug()
+      ->Clear();
+  CheckAutoMode(&local_view_.chassis());
 
   ControlCommand control_command;
 
@@ -436,9 +456,6 @@ bool ControlComponent::Proc() {
   control_command.mutable_header()->set_radar_timestamp(
       local_view_.trajectory().header().radar_timestamp());
 
-  common::util::FillHeader(node_->Name(), &control_command);
-
-  ADEBUG << control_command.ShortDebugString();
   if (FLAGS_is_control_test_mode) {
     ADEBUG << "Skip publish control command in test mode";
     return true;
@@ -458,7 +475,9 @@ bool ControlComponent::Proc() {
   control_command.mutable_latency_stats()->set_total_time_ms(time_diff_ms);
   control_command.mutable_latency_stats()->set_total_time_exceeded(
       time_diff_ms > FLAGS_control_period * 1e3);
-  ADEBUG << "control cycle time is: " << time_diff_ms << " ms.";
+  if (control_command.mutable_latency_stats()->total_time_exceeded()) {
+    AINFO << "total control cycle time is exceeded: " << time_diff_ms << " ms.";
+  }
   status.Save(control_command.mutable_header()->mutable_status());
 
   // measure latency
@@ -470,10 +489,26 @@ bool ControlComponent::Proc() {
         end_time);
   }
 
+  common::util::FillHeader(node_->Name(), &control_command);
+  ADEBUG << control_command.ShortDebugString();
+  control_cmd_writer_->Write(control_command);
+
   // save current control command
   injector_->Set_pervious_control_command(&control_command);
+  injector_->previous_control_command_mutable()->CopyFrom(control_command);
+  // save current control debug
+  injector_->previous_control_debug_mutable()->CopyFrom(
+      injector_->control_debug_info());
 
-  control_cmd_writer_->Write(control_command);
+  PublishControlInteractiveMsg();
+  const auto end_process_control_time = Clock::Now();
+  const double process_control_time_diff =
+      (end_process_control_time - start_time).ToSecond() * 1e3;
+  if (control_command.mutable_latency_stats()->total_time_exceeded()) {
+    AINFO << "control all spend time is: " << process_control_time_diff
+          << " ms.";
+  }
+
   return true;
 }
 
@@ -562,6 +597,39 @@ void ControlComponent::GetVehiclePitchAngle(ControlCommand *control_command) {
   control_command->mutable_debug()
       ->mutable_simple_lon_debug()
       ->set_vehicle_pitch(vehicle_pitch + FLAGS_pitch_offset_deg);
+}
+
+void ControlComponent::CheckAutoMode(const canbus::Chassis *chassis) {
+  if (!injector_->previous_control_debug_mutable()
+           ->mutable_control_component_debug()
+           ->is_auto() &&
+      chassis->driving_mode() == apollo::canbus::Chassis::COMPLETE_AUTO_DRIVE) {
+    from_else_to_auto_ = true;
+    AINFO << "From else to auto!!!";
+  } else {
+    from_else_to_auto_ = false;
+  }
+  ADEBUG << "from_else_to_auto_: " << from_else_to_auto_;
+  injector_->mutable_control_debug_info()
+      ->mutable_control_component_debug()
+      ->set_from_else_to_auto(from_else_to_auto_);
+
+  if (chassis->driving_mode() == apollo::canbus::Chassis::COMPLETE_AUTO_DRIVE) {
+    is_auto_ = true;
+  } else {
+    is_auto_ = false;
+  }
+  injector_->mutable_control_debug_info()
+      ->mutable_control_component_debug()
+      ->set_is_auto(is_auto_);
+}
+
+void ControlComponent::PublishControlInteractiveMsg() {
+  auto control_interactive_msg = injector_->control_interactive_info();
+  common::util::FillHeader(node_->Name(), &control_interactive_msg);
+  ADEBUG << "control interactive msg is: "
+         << control_interactive_msg.ShortDebugString();
+  control_interactive_writer_->Write(control_interactive_msg);
 }
 
 }  // namespace control

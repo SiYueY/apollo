@@ -57,6 +57,30 @@ bool LidarOutputComponent::Init() {
         new std::thread(&LidarOutputComponent::BenchmarkThreadFunc, this));
   }
 
+  // for saving LidarFrame
+  lidar_frame_output_dir_ = comp_config.lidar_frame_output_dir();
+  use_lidar_cooridinate_ = comp_config.use_lidar_cooridinate();
+  cyber::ReaderConfig reader_config;
+  reader_config.channel_name = comp_config.lidar_frame_channel_name();
+  reader_config.pending_queue_size = 5;
+  if (!comp_config.save_lidar_frame_message()) {
+      return true;
+  }
+  std::function<void(const std::shared_ptr<LidarFrameMessage>&)> model_call
+        = std::bind(&LidarOutputComponent::SaveBenchmarkLidarFrame,
+            this, std::placeholders::_1);
+  lidar_frame_reader_ = this->node_->CreateReader<LidarFrameMessage>(
+      reader_config, model_call);
+
+  // Attention:
+  // For DKIT-2024 Part2 benchmark-data: timestamp is just two-decimal-places
+  // But in apollo-benchmark, the timestamp diff is set to 1e-4
+  // So this should also save timestamp to two-decimal-places
+  // Trick-action: WE should modify apollo-benchmark code
+  // PS: part1 is RIGHT, completely equal to pointcloud-timestamp)
+  timestamp_two_decimal_format_ = comp_config.timestamp_two_decimal_format();
+
+  AINFO << "Register LidarFrameMessage for benchmark";
   return true;
 }
 
@@ -141,11 +165,81 @@ bool LidarOutputComponent::SaveBenchmarkFrame(
     return false;
   }
 
-  std::string pb_name = GetAbsolutePath(
-      benchmark_frame_output_dir_, std::to_string(timestamp) + ".pb");
+  double two_demical_time = round(timestamp * 100) / 100.0;
+  std::string pb_name = "";
+  if (timestamp_two_decimal_format_) {
+      pb_name = GetAbsolutePath(benchmark_frame_output_dir_,
+          std::to_string(two_demical_time) + ".pb");
+  } else {
+      pb_name = GetAbsolutePath(benchmark_frame_output_dir_,
+          std::to_string(timestamp) + ".pb");
+  }
   SetProtoToASCIIFile(*out_message, pb_name);
 
   return true;
+}
+
+bool LidarOutputComponent::SaveBenchmarkLidarFrame(
+    const std::shared_ptr<LidarFrameMessage>& in_message) {
+    std::shared_ptr<PerceptionBenchmarkFrame> out_message(
+        new (std::nothrow) PerceptionBenchmarkFrame);
+    double timestamp = in_message->timestamp_;
+    double lidar_timestamp = in_message->lidar_timestamp_;
+
+    std::vector<base::ObjectPtr> valid_objects;
+    if (in_message != nullptr && in_message->lidar_frame_ != nullptr) {
+        auto lidar_objects = in_message->lidar_frame_->segmented_objects;
+        valid_objects.assign(lidar_objects.begin(), lidar_objects.end());
+    }
+
+    auto sensor_frame_info = out_message->mutable_sensor_frame_info();
+    sensor_frame_info->set_sensor_id(
+        in_message->lidar_frame_->sensor_info.name);
+    sensor_frame_info->set_timestamp(timestamp);
+
+    Eigen::Affine3d sensor2world_pose = Eigen::Affine3d::Identity();
+    if (in_message == nullptr || in_message->lidar_frame_ == nullptr) {
+        AERROR << "SaveBenchmarkLidarFrame Error, Can't get lidar2world_pose";
+    }
+    sensor2world_pose = in_message->lidar_frame_->lidar2world_pose;
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            double val = sensor2world_pose.matrix()(i, j);
+            sensor_frame_info->add_sensor2world_pose(val);
+        }
+    }
+
+    // Serialize LidarFrame benchmark message
+    if (!onboard::MsgSerializer::SerializeLidarFrameMsg(
+                timestamp,
+                lidar_timestamp,
+                in_message->seq_num_,
+                sensor2world_pose,
+                valid_objects,
+                out_message.get(),
+                use_lidar_cooridinate_)) {
+        AERROR << "Failed to get SerializeLidarFrameMsg object.";
+        return false;
+    }
+
+    if (!EnsureDirectory(lidar_frame_output_dir_)) {
+        AERROR << "Create dir " << lidar_frame_output_dir_ << " error.";
+        return false;
+    }
+    double two_demical_time = round(timestamp * 100) / 100.0;
+    std::string pb_name = "";
+    if (timestamp_two_decimal_format_) {
+        pb_name = GetAbsolutePath(lidar_frame_output_dir_,
+            std::to_string(two_demical_time) + ".pb");
+    } else {
+        pb_name = GetAbsolutePath(lidar_frame_output_dir_,
+            std::to_string(timestamp) + ".pb");
+    }
+    SetProtoToASCIIFile(*out_message, pb_name);
+
+    AINFO << "SaveBenchmarkLidarFrame Success: time is "
+          << std::to_string(timestamp);
+    return true;
 }
 
 void LidarOutputComponent::BenchmarkThreadFunc() {

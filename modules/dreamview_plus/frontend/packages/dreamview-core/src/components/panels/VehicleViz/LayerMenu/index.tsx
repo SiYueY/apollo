@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Checkbox, Radio } from '@dreamview/dreamview-ui';
 import { useTranslation } from 'react-i18next';
 import { useLocalStorage } from '@dreamview/dreamview-core/src/util/storageManager';
@@ -22,6 +22,7 @@ function LayerMenu(props: any) {
         handleReferenceLineVisible,
         handleBoundaryLineVisible,
         handleTrajectoryLineVisible,
+        handleBoudingBoxVisible,
     } = props;
     const { t } = useTranslation('layerMenu');
     const panelContext = usePanelContext();
@@ -31,18 +32,19 @@ function LayerMenu(props: any) {
 
     const checkBoxDisabled = useCallback(
         (key: string) => {
-            if (key === 'pointCloud') {
-                // 优先判断channels字符串数组中是否有'compensator'，然后判断是否有'fusion'
-                const pointCloudChannels = metadata.find(
-                    (item) => item.dataName === StreamDataNames.POINT_CLOUD,
-                )?.channels;
-
-                if (Array.isArray(pointCloudChannels)) {
-                    const hasCompensator = pointCloudChannels.some((item) => item.channelName.includes('compensator'));
-                    const hasFusion = pointCloudChannels.some((item) => item.channelName.includes('fusion'));
-                    return !(hasCompensator || hasFusion);
-                }
-            }
+            // todo：支持包括融合点云在内的多个点云
+            // if (key === 'pointCloud') {
+            //     // 优先判断channels字符串数组中是否有'compensator'，然后判断是否有'fusion'
+            //     const pointCloudChannels = metadata.find(
+            //         (item) => item.dataName === StreamDataNames.POINT_CLOUD,
+            //     )?.channels;
+            //
+            //     if (Array.isArray(pointCloudChannels)) {
+            //         const hasCompensator = pointCloudChannels.some((item) => item.channelName.includes('compensator'));
+            //         const hasFusion = pointCloudChannels.some((item) => item.channelName.includes('fusion'));
+            //         return !(hasCompensator || hasFusion);
+            //     }
+            // }
             return false;
         },
         [metadata],
@@ -304,6 +306,10 @@ function LayerMenu(props: any) {
 
                                                 if (key === 'planningTrajectoryLine') {
                                                     handleTrajectoryLineVisible(checked);
+                                                }
+
+                                                if (key === 'egoBoudingBox') {
+                                                    handleBoudingBoxVisible(checked);
                                                 }
                                             }}
                                         />
