@@ -31,13 +31,19 @@ namespace utility {
 /* AbstractClassFactoryBase */
 class AbstractClassFactoryBase {
  public:
+  /* 构造函数 */
   AbstractClassFactoryBase(const std::string& class_name,
                            const std::string& base_class_name);
+  /* 析构函数 */
   virtual ~AbstractClassFactoryBase();
 
+  /* 设置动态库的相对路径 */
   void SetRelativeLibraryPath(const std::string& library_path);
+  /* 添加ClassLoader */
   void AddOwnedClassLoader(ClassLoader* loader);
+  /* 删除ClassLoader */
   void RemoveOwnedClassLoader(const ClassLoader* loader);
+  /* ClassLoader是否属于该ClassFactory */
   bool IsOwnedBy(const ClassLoader* loader);
   bool IsOwnedByAnybody();
   std::vector<ClassLoader*> GetRelativeClassLoaders();
@@ -47,9 +53,9 @@ class AbstractClassFactoryBase {
 
  protected:
   std::vector<ClassLoader*> relative_class_loaders_;
-  std::string relative_library_path_;
-  std::string base_class_name_;
-  std::string class_name_;
+  std::string relative_library_path_; /* 相对动态库路径 */
+  std::string base_class_name_; /* 基类名称 */
+  std::string class_name_;  /* 类名称 */
 };
 
 /* 模板类AbstractClassFactory->AbstractClassFactoryBase */

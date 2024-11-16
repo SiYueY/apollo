@@ -22,12 +22,14 @@ namespace cyber {
 namespace class_loader {
 namespace utility {
 
+/* AbstractClassFactoryBase构造函数 */
 AbstractClassFactoryBase::AbstractClassFactoryBase(
     const std::string& class_name, const std::string& base_class_name)
     : relative_library_path_(""),
       base_class_name_(base_class_name),
       class_name_(class_name) {}
 
+/* AbstractClassFactoryBase析构函数 */
 AbstractClassFactoryBase::~AbstractClassFactoryBase() {}
 
 void AbstractClassFactoryBase::SetRelativeLibraryPath(

@@ -25,16 +25,19 @@ namespace cyber {
 
 class TimerBucket;
 
+/* 定时任务 */
 struct TimerTask {
+  /* 构造函数 */
   explicit TimerTask(uint64_t timer_id) : timer_id_(timer_id) {}
-  uint64_t timer_id_ = 0;
-  std::function<void()> callback;
-  uint64_t interval_ms = 0;
-  uint64_t remainder_interval_ms = 0;
-  uint64_t next_fire_duration_ms = 0;
-  int64_t accumulated_error_ns = 0;
-  uint64_t last_execute_time_ns = 0;
-  std::mutex mutex;
+
+  uint64_t timer_id_ = 0;              // 定时器ID
+  std::function<void()> callback;      // 回调函数
+  uint64_t interval_ms = 0;            // 间隔时间
+  uint64_t remainder_interval_ms = 0;  // 剩余时间
+  uint64_t next_fire_duration_ms = 0;  // 下一次触发时间
+  int64_t accumulated_error_ns = 0;    // 累计误差
+  uint64_t last_execute_time_ns = 0;   // 上一次执行时间
+  std::mutex mutex;                    // 互斥锁
 };
 
 }  // namespace cyber

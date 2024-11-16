@@ -22,10 +22,13 @@
 namespace apollo {
 namespace cyber {
 
+/* 构造函数 */
 TimerComponent::TimerComponent() {}
 
+/* 析构函数 */
 TimerComponent::~TimerComponent() {}
 
+/* 处理函数 */
 bool TimerComponent::Process() {
   if (is_shutdown_.load()) {
     return true;
@@ -69,8 +72,10 @@ bool TimerComponent::Initialize(const TimerComponentConfig& config) {
   return true;
 }
 
+/* 清除定时器组件 */
 void TimerComponent::Clear() { timer_.reset(); }
 
+/* 定时器间隔时间 */
 uint32_t TimerComponent::GetInterval() const { return interval_; }
 
 }  // namespace cyber

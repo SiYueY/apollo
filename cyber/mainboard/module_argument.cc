@@ -29,6 +29,7 @@ namespace apollo {
 namespace cyber {
 namespace mainboard {
 
+/* 显示模块参数的使用说明 */
 void ModuleArgument::DisplayUsage() {
   AINFO << "Usage: \n    " << binary_name_ << " [OPTION]...\n"
         << "Description: \n"
@@ -61,6 +62,7 @@ void ModuleArgument::DisplayUsage() {
 void ModuleArgument::ParseArgument(const int argc, char* const argv[]) {
   // 二进制模块名称
   binary_name_ = std::string(basename(argv[0]));
+  
   // 解析参数
   GetOptions(argc, argv);
 
@@ -85,12 +87,14 @@ void ModuleArgument::ParseArgument(const int argc, char* const argv[]) {
   GlobalData::Instance()->SetSchedName(sched_name_);
   AINFO << "binary_name_ is " << binary_name_ << ", process_group_ is "
         << process_group_ << ", has " << dag_conf_list_.size() << " dag conf";
+
   // 打印dag_conf配置
   for (std::string& dag : dag_conf_list_) {
     AINFO << "dag_conf: " << dag;
   }
 }
 
+/* 获取选项 */
 void ModuleArgument::GetOptions(const int argc, char* const argv[]) {
   opterr = 0;  // extern int opterr
   int long_index = 0;

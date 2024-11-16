@@ -26,19 +26,24 @@
 namespace apollo {
 namespace cyber {
 
+/* TimerBucket */
 class TimerBucket {
  public:
+  /* 添加定时任务 */
   void AddTask(const std::shared_ptr<TimerTask>& task) {
     std::lock_guard<std::mutex> lock(mutex_);
     task_list_.push_back(task);
   }
 
+  /* 互斥锁 */
   std::mutex& mutex() { return mutex_; }
+
+  /* 定时任务列表 */
   std::list<std::weak_ptr<TimerTask>>& task_list() { return task_list_; }
 
  private:
-  std::mutex mutex_;
-  std::list<std::weak_ptr<TimerTask>> task_list_;
+  std::mutex mutex_;                               // 互斥锁
+  std::list<std::weak_ptr<TimerTask>> task_list_;  // 定时任务列表
 };
 
 }  // namespace cyber

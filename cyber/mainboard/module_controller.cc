@@ -27,6 +27,7 @@ namespace apollo {
 namespace cyber {
 namespace mainboard {
 
+/* 清除所有模块 */
 void ModuleController::Clear() {
   for (auto& component : component_list_) {
     component->Shutdown();
@@ -35,23 +36,26 @@ void ModuleController::Clear() {
   class_loader_manager_.UnloadAllLibrary();
 }
 
+/* 加载所有模块 */
 bool ModuleController::LoadAll() {
-  const std::string work_root = common::WorkRoot();
-  const std::string current_path = common::GetCurrentPath();
-  const std::string dag_root_path = common::GetAbsolutePath(work_root, "dag");
+  const std::string work_root = common::WorkRoot(); /* 工作根目录 */
+  const std::string current_path = common::GetCurrentPath();  /* 当前目录 */
+  const std::string dag_root_path = common::GetAbsolutePath(work_root, "dag");  /* DAG根目录 */
   std::vector<std::string> paths;
+  /* 加载插件 */
   for (auto& plugin_description : args_.GetPluginDescriptionList()) {
     apollo::cyber::plugin_manager::PluginManager::Instance()->LoadPlugin(
         plugin_description);
   }
+  /* 加载安装插件 */
   if (!args_.GetDisablePluginsAutoLoad()) {
     apollo::cyber::plugin_manager::PluginManager::Instance()
         ->LoadInstalledPlugins();
   }
+  /* 获取所有DAG配置 */
   for (auto& dag_conf : args_.GetDAGConfList()) {
-    std::string module_path = dag_conf;
-    if (!common::GetFilePathWithEnv(dag_conf, "APOLLO_DAG_PATH",
-                                    &module_path)) {
+    std::string module_path = dag_conf; /* DAG配置 */
+    if (!common::GetFilePathWithEnv(dag_conf, "APOLLO_DAG_PATH", &module_path)) {
       AERROR << "no dag conf [" << dag_conf << "] found!";
       return false;
     }
@@ -76,7 +80,7 @@ bool ModuleController::LoadAll() {
 /* 加载模块 */
 bool ModuleController::LoadModule(const DagConfig& dag_config) {
   for (auto module_config : dag_config.module_config()) {
-    std::string load_path;
+    std::string load_path;  /* 加载路径 */
     if (!common::GetFilePathWithEnv(module_config.module_library(),
                                     "APOLLO_LIB_PATH", &load_path)) {
       AERROR << "no module library [" << module_config.module_library()
@@ -85,27 +89,31 @@ bool ModuleController::LoadModule(const DagConfig& dag_config) {
     }
     AINFO << "mainboard: use module library " << load_path;
 
-    // 通过类加载器加载load_path下的模块
+    /* 通过类加载器加载load_path下的模块 */
     class_loader_manager_.LoadLibrary(load_path);
 
-    // 加载模块
+    /* 加载组件 */
     for (auto& component : module_config.components()) {
+      /* 组件名称 */
       const std::string& class_name = component.class_name();
-      // 创建模块对象
+      /* 创建组件对象 */
       std::shared_ptr<ComponentBase> base =
           class_loader_manager_.CreateClassObj<ComponentBase>(class_name);
-      // 调用对象的Initialize方法
+      /* 组件对象初始化 */ 
       if (base == nullptr || !base->Initialize(component.config())) {
         return false;
       }
       component_list_.emplace_back(std::move(base));
     }
 
-    // 加载定时器模块
+    /* 加载定时器模块 */
     for (auto& component : module_config.timer_components()) {
+      /* 组件名称 */
       const std::string& class_name = component.class_name();
+      /* 创建定时器组件对象 */
       std::shared_ptr<ComponentBase> base =
           class_loader_manager_.CreateClassObj<ComponentBase>(class_name);
+      /* 初始化定时器组件 */
       if (base == nullptr || !base->Initialize(component.config())) {
         return false;
       }
@@ -115,15 +123,18 @@ bool ModuleController::LoadModule(const DagConfig& dag_config) {
   return true;
 }
 
+/* 加载模块 */
 bool ModuleController::LoadModule(const std::string& path) {
-  DagConfig dag_config;
+  DagConfig dag_config; /* DAG配置 */
   if (!common::GetProtoFromFile(path, &dag_config)) {
     AERROR << "Get proto failed, file: " << path;
     return false;
   }
+  /* 加载模块 */
   return LoadModule(dag_config);
 }
 
+/* 获取组件数量 */
 int ModuleController::GetComponentNum(const std::string& path) {
   DagConfig dag_config;
   int component_nums = 0;

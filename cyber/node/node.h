@@ -53,16 +53,17 @@ class Node {
   virtual ~Node();
 
   /**
-   * @brief Get node's name.
-   * @warning duplicate node name is not allowed in the topo. 拓扑结构中的 node
-   * 不允许充棉
+   * @brief Get node's name.  获取 node 的名称
+   * @warning duplicate node name is not allowed in the topo.
+   * 拓扑结构中的 node 不允许重名
    */
   const std::string& Name() const;
 
   /**
-   * @brief Create a Writer with specific message type.
+   * @brief Create a Writer with specific message type. 以特定的 message
+   * 类型创建 Writer.
    *
-   * @tparam MessageT Message Type
+   * @tparam MessageT Message Type.  message 类型
    * @param role_attr is a protobuf message RoleAttributes, which includes the
    * channel name and other info.
    * @return std::shared_ptr<Writer<MessageT>> result Writer Object
@@ -72,10 +73,11 @@ class Node {
       -> std::shared_ptr<Writer<MessageT>>;
 
   /**
-   * @brief Create a Writer with specific message type.
+   * @brief Create a Writer with specific message type. 以特定的 message
+   * 类型创建 Writer.
    *
-   * @tparam MessageT Message Type
-   * @param channel_name the channel name to be published.
+   * @tparam MessageT Message Type. message 类型
+   * @param channel_name the channel name to be published.  发布的 channel 名称.
    * @return std::shared_ptr<Writer<MessageT>> result Writer Object
    */
   template <typename MessageT>
@@ -84,12 +86,13 @@ class Node {
 
   /**
    * @brief Create a Reader with specific message type with channel name
-   * qos and other configs used will be default
+   * qos and other configs used will be default.
    *
-   * @tparam MessageT Message Type
-   * @param channel_name the channel of the reader subscribed.
-   * @param reader_func invoked when message receive
-   * invoked when the message is received.
+   * @tparam MessageT Message Type. message 类型
+   * @param channel_name the channel of the reader subscribed.  reader 订阅的
+   * channel 名称.
+   * @param reader_func invoked when message receive. 接收 message
+   * 时执行的回调函数. invoked when the message is received.
    * @return std::shared_ptr<cyber::Reader<MessageT>> result Reader Object
    */
   template <typename MessageT>
@@ -100,7 +103,7 @@ class Node {
   /**
    * @brief Create a Reader with specific message type with reader config
    *
-   * @tparam MessageT Message Type
+   * @tparam MessageT Message Type. message 类型
    * @param config instance of `ReaderConfig`,
    * include channel name, qos and pending queue size
    * @param reader_func invoked when message receive
@@ -126,12 +129,14 @@ class Node {
       -> std::shared_ptr<cyber::Reader<MessageT>>;
 
   /**
-   * @brief Create a Service object with specific `service_name`
+   * @brief Create a Service object with specific `service_name`.
+   * 以特定的服务名称创建 Service 对象.
    *
-   * @tparam Request Message Type of the Request
-   * @tparam Response Message Type of the Response
-   * @param service_name specific service name to a serve
-   * @param service_callback invoked when a service is called
+   * @tparam Request Message Type of the Request. Request 消息类型.
+   * @tparam Response Message Type of the Response. Response 消息类型.
+   * @param service_name specific service name to a serve. 服务的特定名称.
+   * @param service_callback invoked when a service is called.
+   * 服务被调用时执行的回调函数.
    * @return std::shared_ptr<Service<Request, Response>> result `Service`
    */
   template <typename Request, typename Response>
@@ -142,10 +147,10 @@ class Node {
 
   /**
    * @brief Create a Client object to request Service with `service_name`
-   *
-   * @tparam Request Message Type of the Request
-   * @tparam Response Message Type of the Response
-   * @param service_name specific service name to a Service
+   *  创建 Client 对象并请求 `service_name` 服务.
+   * @tparam Request Message Type of the Request. Request 消息类型.
+   * @tparam Response Message Type of the Response. Response 消息类型.
+   * @param service_name specific service name to a Service. 服务的特定名称.
    * @return std::shared_ptr<Client<Request, Response>> result `Client`
    */
   template <typename Request, typename Response>
@@ -156,20 +161,20 @@ class Node {
   bool DeleteReader(const ReaderConfig& config);
   bool DeleteReader(const proto::RoleAttributes& role_attr);
   /**
-   * @brief Observe all readers' data
+   * @brief Observe all readers' data. 观察所有 Reader 的数据.
    */
   void Observe();
 
   /**
-   * @brief clear all readers' data
+   * @brief clear all readers' data. 清除所有 Reader 的数据.
    */
   void ClearData();
 
   /**
    * @brief Get the Reader object that subscribe `channel_name`
-   *
-   * @tparam MessageT Message Type
-   * @param channel_name channel name
+   *  获取订阅 `channel_name` 的 Reader 对象.
+   * @tparam MessageT Message Type. 消息类型.
+   * @param channel_name channel name. Channel 名称.
    * @return std::shared_ptr<Reader<MessageT>> result reader
    */
   template <typename MessageT>
@@ -180,14 +185,16 @@ class Node {
   explicit Node(const std::string& node_name,
                 const std::string& name_space = "");
 
-  std::string node_name_;
-  std::string name_space_;
+  std::string node_name_;   // node 名称
+  std::string name_space_;  // 命名空间
 
-  std::mutex readers_mutex_;
+  std::mutex readers_mutex_;  // reader 互斥锁
   std::map<std::string, std::shared_ptr<ReaderBase>> readers_;
 
-  std::unique_ptr<NodeChannelImpl> node_channel_impl_ = nullptr;
-  std::unique_ptr<NodeServiceImpl> node_service_impl_ = nullptr;
+  std::unique_ptr<NodeChannelImpl> node_channel_impl_ =
+      nullptr;  // NodeChannelImpl 对象
+  std::unique_ptr<NodeServiceImpl> node_service_impl_ =
+      nullptr;  // NodeServiceImpl 对象
 };
 
 template <typename MessageT>

@@ -34,7 +34,9 @@ namespace cyber {
 
 class Node;
 
+/* Reader 配置 */
 struct ReaderConfig {  ///< configurations for a Reader
+  /* 构造函数 */
   ReaderConfig() {
     qos_profile.set_history(proto::QosHistoryPolicy::HISTORY_KEEP_LAST);
     qos_profile.set_depth(1);
@@ -45,12 +47,16 @@ struct ReaderConfig {  ///< configurations for a Reader
 
     pending_queue_size = DEFAULT_PENDING_QUEUE_SIZE;
   }
+
+  /* 拷贝构造函数 */
   ReaderConfig(const ReaderConfig& other)
       : channel_name(other.channel_name),
         qos_profile(other.qos_profile),
         pending_queue_size(other.pending_queue_size) {}
 
+  /* channel 名称 */
   std::string channel_name;       //< channel reads
+  /* qos 配置 */
   proto::QosProfile qos_profile;  //< the qos configuration
   /**
    * @brief configuration for responding ChannelBuffer.
@@ -60,8 +66,9 @@ struct ReaderConfig {  ///< configurations for a Reader
 };
 
 /**
- * @class NodeChannelImpl
+ * @class NodeChannelImpl NodeChannel实现
  * @brief The implementation for Node to create Objects connected by Channels.
+ * 创建 Node 并绑定 Channel.
  * e.g. Channel Reader and Writer
  */
 class NodeChannelImpl {

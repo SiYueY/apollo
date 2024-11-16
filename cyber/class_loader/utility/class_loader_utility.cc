@@ -252,6 +252,7 @@ bool LoadLibrary(const std::string& library_path, ClassLoader* loader) {
   return true;
 }
 
+/* 卸载动态库 */
 void UnloadLibrary(const std::string& library_path, ClassLoader* loader) {
   {
     std::lock_guard<std::recursive_mutex> lck(GetLibPathSharedLibMutex());

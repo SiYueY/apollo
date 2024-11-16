@@ -32,6 +32,8 @@
 namespace apollo {
 namespace cyber {
 
+/* 创建Node.
+ * 默认命名空间为空.*/
 std::unique_ptr<Node> CreateNode(const std::string& node_name,
                                  const std::string& name_space = "");
 

@@ -32,6 +32,7 @@ using apollo::cyber::proto::RunMode;
 
 std::unique_ptr<Node> CreateNode(const std::string& node_name,
                                  const std::string& name_space) {
+  // 检查是否已初始化cyber
   bool is_reality_mode = GlobalData::Instance()->IsRealityMode();
   if (is_reality_mode && !OK()) {
     // add some hint log
@@ -39,6 +40,7 @@ std::unique_ptr<Node> CreateNode(const std::string& node_name,
     AERROR << "please initialize cyber firstly.";
     return nullptr;
   }
+  // 创建Node对象
   return std::unique_ptr<Node>(new Node(node_name, name_space));
 }
 

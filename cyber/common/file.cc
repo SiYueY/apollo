@@ -441,6 +441,7 @@ bool GetFilePathWithEnv(const std::string &path, const std::string &env_var,
     return relative_path_exists;
   }
 
+  /* 获取环境变量 */
   const char *var = std::getenv(env_var.c_str());
   if (var == nullptr) {
     AWARN << "GetFilePathWithEnv: env " << env_var << " not found.";

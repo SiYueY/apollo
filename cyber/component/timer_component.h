@@ -57,7 +57,9 @@ class TimerComponent : public ComponentBase {
    */
   virtual bool Proc() = 0;
 
+  /* 时间间隔 */
   uint32_t interval_ = 0;
+  /* 定时器 */
   std::unique_ptr<Timer> timer_;
 };
 

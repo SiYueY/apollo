@@ -31,11 +31,12 @@
 namespace apollo {
 namespace cyber {
 
+/* 状态 */
 enum State : std::uint8_t {
-  STATE_UNINITIALIZED = 0,
-  STATE_INITIALIZED,
-  STATE_SHUTTING_DOWN,
-  STATE_SHUTDOWN,
+  STATE_UNINITIALIZED = 0, /* 未初始化 */
+  STATE_INITIALIZED,       /* 已初始化 */
+  STATE_SHUTTING_DOWN,     /* 正在关闭 */
+  STATE_SHUTDOWN,          /* 已关闭 */
 };
 
 State GetState();

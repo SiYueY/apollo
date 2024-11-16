@@ -18,6 +18,8 @@
 namespace apollo {
 namespace cyber {
 namespace class_loader {
+
+/* 构造函数 */
 ClassLoader::ClassLoader(const std::string& library_path)
     : library_path_(library_path),
       loadlib_ref_count_(0),
@@ -25,12 +27,15 @@ ClassLoader::ClassLoader(const std::string& library_path)
   LoadLibrary();
 }
 
+/* 析构函数 */
 ClassLoader::~ClassLoader() { UnloadLibrary(); }
 
+/* 动态库是否已被加载 */
 bool ClassLoader::IsLibraryLoaded() {
   return utility::IsLibraryLoaded(library_path_, this);
 }
 
+/* 加载动态库 */
 bool ClassLoader::LoadLibrary() {
   std::lock_guard<std::mutex> lck(loadlib_ref_count_mutex_);
   ++loadlib_ref_count_;
@@ -38,6 +43,7 @@ bool ClassLoader::LoadLibrary() {
   return utility::LoadLibrary(library_path_, this);
 }
 
+/* 卸载动态库 */
 int ClassLoader::UnloadLibrary() {
   std::lock_guard<std::mutex> lckLib(loadlib_ref_count_mutex_);
   std::lock_guard<std::mutex> lckObj(classobj_ref_count_mutex_);
@@ -59,6 +65,7 @@ int ClassLoader::UnloadLibrary() {
   return loadlib_ref_count_;
 }
 
+/* 获取动态库路径 */
 const std::string ClassLoader::GetLibraryPath() const { return library_path_; }
 
 }  // namespace class_loader

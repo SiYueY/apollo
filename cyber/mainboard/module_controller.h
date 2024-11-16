@@ -32,30 +32,41 @@ namespace mainboard {
 
 using apollo::cyber::proto::DagConfig;
 
+/* 模块控制 */
 class ModuleController {
  public:
+  /* 构造函数 */
   explicit ModuleController(const ModuleArgument& args);
+  /* 析构函数 */
   virtual ~ModuleController() = default;
 
+  /* 初始化 */
   bool Init();
+  /* 加载所有模块 */
   bool LoadAll();
+  /* 清除所有模块 */
   void Clear();
 
  private:
+  /* 加载模块 */
   bool LoadModule(const std::string& path);
   bool LoadModule(const DagConfig& dag_config);
+  /* 获取组件数量 */
   int GetComponentNum(const std::string& path);
-  int total_component_nums = 0;
-  bool has_timer_component = false;
 
-  ModuleArgument args_;
-  class_loader::ClassLoaderManager class_loader_manager_;
-  std::vector<std::shared_ptr<ComponentBase>> component_list_;
+  int total_component_nums = 0; /* 组件总数 */
+  bool has_timer_component = false; /* 是否存在定时器组件 */
+
+  ModuleArgument args_; /* 模块参数 */
+  class_loader::ClassLoaderManager class_loader_manager_; /* 类加载管理器 */
+  std::vector<std::shared_ptr<ComponentBase>> component_list_;  /* 组件列表 */
 };
 
+/* 构造函数 */
 inline ModuleController::ModuleController(const ModuleArgument& args)
     : args_(args) {}
 
+/* 初始化 */
 inline bool ModuleController::Init() { return LoadAll(); }
 
 }  // namespace mainboard

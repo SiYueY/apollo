@@ -29,15 +29,21 @@ namespace apollo {
 namespace cyber {
 namespace class_loader {
 
-/* 类加载管理器主要管理不同的classloader */
+/* 类加载管理器：管理不同的类加载器classloader */
 class ClassLoaderManager {
  public:
+  /* 构造函数 */
   ClassLoaderManager();
+  /* 析构函数 */
   virtual ~ClassLoaderManager();
 
+  /* 加载动态库 */
   bool LoadLibrary(const std::string& library_path);
+  /* 卸载所有动态库 */
   void UnloadAllLibrary();
+  /* 动态库是否有效 */
   bool IsLibraryValid(const std::string& library_path);
+  /* 创建类对象 */
   template <typename Base>
   std::shared_ptr<Base> CreateClassObj(const std::string& class_name);
   template <typename Base>
@@ -45,6 +51,7 @@ class ClassLoaderManager {
                                        const std::string& library_path);
   template <typename Base>
   bool IsClassValid(const std::string& class_name);
+  /* 获取类的名称 */
   template <typename Base>
   std::vector<std::string> GetValidClassNames();
 
@@ -63,8 +70,9 @@ class ClassLoaderManager {
   int UnloadLibrary(const std::string& library_path);
 
  private:
+ /* 互斥锁 */
   std::mutex libpath_loader_map_mutex_;
-  // 不同的libpath对应不同的classloader, <library_path, ClassLoader>
+  /* 不同的libpath对应不同的classloader, <library_path, ClassLoader> */
   std::map<std::string, ClassLoader*> libpath_loader_map_;
 };
 

@@ -23,6 +23,7 @@
 namespace apollo {
 namespace cyber {
 
+/* 启动时间轮 */
 void TimingWheel::Start() {
   std::lock_guard<std::mutex> lock(running_mutex_);
   if (!running_) {
@@ -33,6 +34,7 @@ void TimingWheel::Start() {
   }
 }
 
+/* 停止时间轮 */
 void TimingWheel::Shutdown() {
   std::lock_guard<std::mutex> lock(running_mutex_);
   if (running_) {
@@ -43,6 +45,7 @@ void TimingWheel::Shutdown() {
   }
 }
 
+/* 时间轮每隔一段时间执行一次 */
 void TimingWheel::Tick() {
   auto& bucket = work_wheel_[current_work_wheel_index_];
   {
@@ -66,10 +69,12 @@ void TimingWheel::Tick() {
   }
 }
 
+/* 添加定时任务 */
 void TimingWheel::AddTask(const std::shared_ptr<TimerTask>& task) {
   AddTask(task, current_work_wheel_index_);
 }
 
+/* 添加定时任务 */
 void TimingWheel::AddTask(const std::shared_ptr<TimerTask>& task,
                           const uint64_t current_work_wheel_index) {
   if (!running_) {
@@ -141,6 +146,7 @@ void TimingWheel::TickFunc() {
   }
 }
 
+/* 构造函数 */
 TimingWheel::TimingWheel() {}
 
 }  // namespace cyber

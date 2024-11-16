@@ -25,19 +25,24 @@ namespace cyber {
 
 namespace {
 std::atomic<uint64_t> global_timer_id = {0};
+
+/* 生成定时器ID */
 uint64_t GenerateTimerId() { return global_timer_id.fetch_add(1); }
 }  // namespace
 
+/* 构造函数 */
 Timer::Timer() {
   timing_wheel_ = TimingWheel::Instance();
   timer_id_ = GenerateTimerId();
 }
 
+/* 构造函数 */
 Timer::Timer(TimerOption opt) : timer_opt_(opt) {
   timing_wheel_ = TimingWheel::Instance();
   timer_id_ = GenerateTimerId();
 }
 
+/* 构造函数 */
 Timer::Timer(uint32_t period, std::function<void()> callback, bool oneshot) {
   timing_wheel_ = TimingWheel::Instance();
   timer_id_ = GenerateTimerId();
@@ -46,8 +51,10 @@ Timer::Timer(uint32_t period, std::function<void()> callback, bool oneshot) {
   timer_opt_.oneshot = oneshot;
 }
 
+/* 设置定时器选项 */
 void Timer::SetTimerOption(TimerOption opt) { timer_opt_ = opt; }
 
+/* 初始化定时器任务 */
 bool Timer::InitTimerTask() {
   if (timer_opt_.period == 0) {
     AERROR << "Max interval must great than 0";
@@ -126,6 +133,7 @@ bool Timer::InitTimerTask() {
   return true;
 }
 
+/* 启动定时器 */
 void Timer::Start() {
   if (!common::GlobalData::Instance()->IsRealityMode()) {
     return;
@@ -139,6 +147,7 @@ void Timer::Start() {
   }
 }
 
+/* 停止定时器 */
 void Timer::Stop() {
   if (started_.exchange(false) && task_) {
     AINFO << "stop timer, the timer_id: " << timer_id_;
@@ -151,6 +160,7 @@ void Timer::Stop() {
   }
 }
 
+/* 析构函数 */
 Timer::~Timer() {
   if (task_) {
     Stop();

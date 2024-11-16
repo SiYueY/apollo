@@ -35,17 +35,28 @@ static const char DEFAULT_sched_name_[] = "CYBER_DEFAULT";
 static const int ARGS_OPT_CODE_PLUGIN = 1001;
 static const int ARGS_OPT_CODE_DISABLE_PLUGIN_AUTOLOAD = 1002;
 
+/* 模块参数 */
 class ModuleArgument {
  public:
+  /* 构造函数 */
   ModuleArgument() = default;
+  /* 析构函数 */
   virtual ~ModuleArgument() = default;
+  /* 显示模块参数的使用说明 */
   void DisplayUsage();
+  /* 解析参数 */
   void ParseArgument(int argc, char* const argv[]);
+  /* 获取选项 */
   void GetOptions(const int argc, char* const argv[]);
+  /* 获取二进制模块名称 */
   const std::string& GetBinaryName() const;
+  /* 获取进程组名称 */
   const std::string& GetProcessGroup() const;
+  /* 获取调度模块名称 */
   const std::string& GetSchedName() const;
+  /* 获取DAG配置列表 */
   const std::list<std::string>& GetDAGConfList() const;
+  /* 获取插件描述列表 */
   const std::list<std::string>& GetPluginDescriptionList() const;
   const bool GetEnableCpuprofile() const { return enable_cpuprofile_; }
   const std::string GetProfileFilename() const { return profile_filename_; }
@@ -68,27 +79,33 @@ class ModuleArgument {
   bool disable_plugin_autoload_ = false;
 };
 
+/* 获取二进制模块名称 */
 inline const std::string& ModuleArgument::GetBinaryName() const {
   return binary_name_;
 }
 
+/* 获取进程组名称 */
 inline const std::string& ModuleArgument::GetProcessGroup() const {
   return process_group_;
 }
 
+/* 获取调度模块名称 */
 inline const std::string& ModuleArgument::GetSchedName() const {
   return sched_name_;
 }
 
+/* 获取DAG配置列表 */
 inline const std::list<std::string>& ModuleArgument::GetDAGConfList() const {
   return dag_conf_list_;
 }
 
+/* 获取插件描述列表 */
 inline const std::list<std::string>& ModuleArgument::GetPluginDescriptionList()
     const {
   return plugin_description_list_;
 }
 
+/* 是否允许插件自动加载 */
 inline const bool& ModuleArgument::GetDisablePluginsAutoLoad() const {
   return disable_plugin_autoload_;
 }
