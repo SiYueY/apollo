@@ -28,10 +28,10 @@
 #include "cyber/common/util.h"
 #include "cyber/component/component_base.h"
 #include "cyber/croutine/routine_factory.h"
-#include "cyber/statistics/statistics.h"
-#include "cyber/time/time.h"
 #include "cyber/data/data_visitor.h"
 #include "cyber/scheduler/scheduler.h"
+#include "cyber/statistics/statistics.h"
+#include "cyber/time/time.h"
 
 namespace apollo {
 namespace cyber {
@@ -201,13 +201,13 @@ bool Component<M0, NullType, NullType, NullType>::Initialize(
     auto end_time = Time::Now().ToMicrosecond();
     // sampling proc latency and cyber latency in microsecond
     uint64_t process_start_time;
-    statistics::Statistics::Instance()->SamplingProcLatency<
-                        uint64_t>(*role_attr, end_time-start_time);
+    statistics::Statistics::Instance()->SamplingProcLatency<uint64_t>(
+        *role_attr, end_time - start_time);
     if (statistics::Statistics::Instance()->GetProcStatus(
-          *role_attr, &process_start_time) && (
-                        start_time-process_start_time) > 0) {
+            *role_attr, &process_start_time) &&
+        (start_time - process_start_time) > 0) {
       statistics::Statistics::Instance()->SamplingCyberLatency(
-                        *role_attr, start_time-process_start_time);
+          *role_attr, start_time - process_start_time);
     }
   };
 
@@ -310,13 +310,13 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
           auto end_time = Time::Now().ToMicrosecond();
           // sampling proc latency and cyber latency in microsecond
           uint64_t process_start_time;
-          statistics::Statistics::Instance()->SamplingProcLatency<
-                            uint64_t>(*role_attr, end_time-start_time);
+          statistics::Statistics::Instance()->SamplingProcLatency<uint64_t>(
+              *role_attr, end_time - start_time);
           if (statistics::Statistics::Instance()->GetProcStatus(
-                *role_attr, &process_start_time) && (
-                                  start_time-process_start_time) > 0) {
+                  *role_attr, &process_start_time) &&
+              (start_time - process_start_time) > 0) {
             statistics::Statistics::Instance()->SamplingCyberLatency(
-                              *role_attr, start_time-process_start_time);
+                *role_attr, start_time - process_start_time);
           }
         }
       } else {
@@ -343,7 +343,7 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
   std::weak_ptr<Component<M0, M1>> self =
       std::dynamic_pointer_cast<Component<M0, M1>>(shared_from_this());
   auto func = [self, role_attr](const std::shared_ptr<M0>& msg0,
-                     const std::shared_ptr<M1>& msg1) {
+                                const std::shared_ptr<M1>& msg1) {
     auto start_time = Time::Now().ToMicrosecond();
     auto ptr = self.lock();
     if (ptr) {
@@ -351,13 +351,13 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
       auto end_time = Time::Now().ToMicrosecond();
       // sampling proc latency and cyber latency in microsecond
       uint64_t process_start_time;
-      statistics::Statistics::Instance()->SamplingProcLatency<
-                        uint64_t>(*role_attr, end_time-start_time);
+      statistics::Statistics::Instance()->SamplingProcLatency<uint64_t>(
+          *role_attr, end_time - start_time);
       if (statistics::Statistics::Instance()->GetProcStatus(
-            *role_attr, &process_start_time) && (
-                                start_time-process_start_time) > 0) {
+              *role_attr, &process_start_time) &&
+          (start_time - process_start_time) > 0) {
         statistics::Statistics::Instance()->SamplingCyberLatency(
-                          *role_attr, start_time-process_start_time);
+            *role_attr, start_time - process_start_time);
       }
     } else {
       AERROR << "Component object has been destroyed.";
@@ -438,8 +438,8 @@ bool Component<M0, M1, M2, NullType>::Initialize(
     auto blocker2 = blocker::BlockerManager::Instance()->GetBlocker<M2>(
         config.readers(2).channel());
 
-    auto func = [self, blocker1, blocker2, role_attr](
-                        const std::shared_ptr<M0>& msg0) {
+    auto func = [self, blocker1, blocker2,
+                 role_attr](const std::shared_ptr<M0>& msg0) {
       auto start_time = Time::Now().ToMicrosecond();
       auto ptr = self.lock();
       if (ptr) {
@@ -450,13 +450,13 @@ bool Component<M0, M1, M2, NullType>::Initialize(
           auto end_time = Time::Now().ToMicrosecond();
           // sampling proc latency and cyber latency in microsecond
           uint64_t process_start_time;
-          statistics::Statistics::Instance()->SamplingProcLatency<
-                              uint64_t>(*role_attr, end_time-start_time);
+          statistics::Statistics::Instance()->SamplingProcLatency<uint64_t>(
+              *role_attr, end_time - start_time);
           if (statistics::Statistics::Instance()->GetProcStatus(
-                *role_attr, &process_start_time) && (
-                                    start_time-process_start_time) > 0) {
+                  *role_attr, &process_start_time) &&
+              (start_time - process_start_time) > 0) {
             statistics::Statistics::Instance()->SamplingCyberLatency(
-                              *role_attr, start_time-process_start_time);
+                *role_attr, start_time - process_start_time);
           }
         }
       } else {
@@ -493,13 +493,13 @@ bool Component<M0, M1, M2, NullType>::Initialize(
       auto end_time = Time::Now().ToMicrosecond();
       // sampling proc latency and cyber latency in microsecond
       uint64_t process_start_time;
-      statistics::Statistics::Instance()->SamplingProcLatency<
-                        uint64_t>(*role_attr, end_time-start_time);
+      statistics::Statistics::Instance()->SamplingProcLatency<uint64_t>(
+          *role_attr, end_time - start_time);
       if (statistics::Statistics::Instance()->GetProcStatus(
-            *role_attr, &process_start_time) && (
-                                  start_time-process_start_time) > 0) {
+              *role_attr, &process_start_time) &&
+          (start_time - process_start_time) > 0) {
         statistics::Statistics::Instance()->SamplingCyberLatency(
-                            *role_attr, start_time-process_start_time);
+            *role_attr, start_time - process_start_time);
       }
     } else {
       AERROR << "Component object has been destroyed.";
@@ -586,8 +586,8 @@ bool Component<M0, M1, M2, M3>::Initialize(const ComponentConfig& config) {
     auto blocker3 = blocker::BlockerManager::Instance()->GetBlocker<M3>(
         config.readers(3).channel());
 
-    auto func = [self, blocker1, blocker2,
-                 blocker3, role_attr](const std::shared_ptr<M0>& msg0) {
+    auto func = [self, blocker1, blocker2, blocker3,
+                 role_attr](const std::shared_ptr<M0>& msg0) {
       auto start_time = Time::Now().ToMicrosecond();
       auto ptr = self.lock();
       if (ptr) {
@@ -600,13 +600,13 @@ bool Component<M0, M1, M2, M3>::Initialize(const ComponentConfig& config) {
           auto end_time = Time::Now().ToMicrosecond();
           // sampling proc latency and cyber latency in microsecond
           uint64_t process_start_time;
-          statistics::Statistics::Instance()->SamplingProcLatency<
-                            uint64_t>(*role_attr, end_time-start_time);
+          statistics::Statistics::Instance()->SamplingProcLatency<uint64_t>(
+              *role_attr, end_time - start_time);
           if (statistics::Statistics::Instance()->GetProcStatus(
-                *role_attr, &process_start_time) && (
-                                      start_time-process_start_time) > 0) {
+                  *role_attr, &process_start_time) &&
+              (start_time - process_start_time) > 0) {
             statistics::Statistics::Instance()->SamplingCyberLatency(
-                                *role_attr, start_time-process_start_time);
+                *role_attr, start_time - process_start_time);
           }
         }
       } else {
@@ -634,30 +634,29 @@ bool Component<M0, M1, M2, M3>::Initialize(const ComponentConfig& config) {
   auto sched = scheduler::Instance();
   std::weak_ptr<Component<M0, M1, M2, M3>> self =
       std::dynamic_pointer_cast<Component<M0, M1, M2, M3>>(shared_from_this());
-  auto func =
-      [self, role_attr](const std::shared_ptr<M0>& msg0,
-                        const std::shared_ptr<M1>& msg1,
-                        const std::shared_ptr<M2>& msg2,
-                        const std::shared_ptr<M3>& msg3) {
-        auto start_time = Time::Now().ToMicrosecond();
-        auto ptr = self.lock();
-        if (ptr) {
-          ptr->Process(msg0, msg1, msg2, msg3);
-          auto end_time = Time::Now().ToMicrosecond();
-          // sampling proc latency and cyber latency in microsecond
-          uint64_t process_start_time;
-          statistics::Statistics::Instance()->SamplingProcLatency<
-                            uint64_t>(*role_attr, end_time-start_time);
-          if (statistics::Statistics::Instance()->GetProcStatus(
-                *role_attr, &process_start_time) && (
-                                      start_time-process_start_time) > 0) {
-            statistics::Statistics::Instance()->SamplingCyberLatency(
-                              *role_attr, start_time-process_start_time);
-          }
-        } else {
-          AERROR << "Component object has been destroyed." << std::endl;
-        }
-      };
+  auto func = [self, role_attr](const std::shared_ptr<M0>& msg0,
+                                const std::shared_ptr<M1>& msg1,
+                                const std::shared_ptr<M2>& msg2,
+                                const std::shared_ptr<M3>& msg3) {
+    auto start_time = Time::Now().ToMicrosecond();
+    auto ptr = self.lock();
+    if (ptr) {
+      ptr->Process(msg0, msg1, msg2, msg3);
+      auto end_time = Time::Now().ToMicrosecond();
+      // sampling proc latency and cyber latency in microsecond
+      uint64_t process_start_time;
+      statistics::Statistics::Instance()->SamplingProcLatency<uint64_t>(
+          *role_attr, end_time - start_time);
+      if (statistics::Statistics::Instance()->GetProcStatus(
+              *role_attr, &process_start_time) &&
+          (start_time - process_start_time) > 0) {
+        statistics::Statistics::Instance()->SamplingCyberLatency(
+            *role_attr, start_time - process_start_time);
+      }
+    } else {
+      AERROR << "Component object has been destroyed." << std::endl;
+    }
+  };
 
   std::vector<data::VisitorConfig> config_list;
   for (auto& reader : readers_) {
