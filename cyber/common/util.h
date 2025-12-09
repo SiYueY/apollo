@@ -24,10 +24,12 @@ namespace apollo {
 namespace cyber {
 namespace common {
 
+/* 哈希函数 */
 inline std::size_t Hash(const std::string& key) {
   return std::hash<std::string>{}(key);
 }
 
+/* 枚举值转整数 */
 template <typename Enum>
 auto ToInt(Enum const value) -> typename std::underlying_type<Enum>::type {
   return static_cast<typename std::underlying_type<Enum>::type>(value);

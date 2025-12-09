@@ -92,6 +92,7 @@ class Component : public ComponentBase {
                     const std::shared_ptr<M3>& msg3) = 0;
 };
 
+/* 零Channel组件 */
 template <>
 class Component<NullType, NullType, NullType, NullType> : public ComponentBase {
  public:
@@ -100,6 +101,7 @@ class Component<NullType, NullType, NullType, NullType> : public ComponentBase {
   bool Initialize(const ComponentConfig& config) override;
 };
 
+/* 单Channel组件 */
 template <typename M0>
 class Component<M0, NullType, NullType, NullType> : public ComponentBase {
  public:
@@ -112,6 +114,7 @@ class Component<M0, NullType, NullType, NullType> : public ComponentBase {
   virtual bool Proc(const std::shared_ptr<M0>& msg) = 0;
 };
 
+/* 双Channel组件 */
 template <typename M0, typename M1>
 class Component<M0, M1, NullType, NullType> : public ComponentBase {
  public:
@@ -126,6 +129,7 @@ class Component<M0, M1, NullType, NullType> : public ComponentBase {
                     const std::shared_ptr<M1>& msg1) = 0;
 };
 
+/* 三Channel组件 */
 template <typename M0, typename M1, typename M2>
 class Component<M0, M1, M2, NullType> : public ComponentBase {
  public:
@@ -213,7 +217,7 @@ bool Component<M0, NullType, NullType, NullType>::Initialize(
 
   std::shared_ptr<Reader<M0>> reader = nullptr;
 
-  if (cyber_likely(is_reality_mode)) {
+  if (cyber_likely(is_reality_mode)) {  // 分支预测优化
     reader = node_->CreateReader<M0>(reader_cfg);
   } else {
     reader = node_->CreateReader<M0>(reader_cfg, func);
@@ -225,7 +229,7 @@ bool Component<M0, NullType, NullType, NullType>::Initialize(
   }
   readers_.emplace_back(std::move(reader));
 
-  if (cyber_unlikely(!is_reality_mode)) {
+  if (cyber_unlikely(!is_reality_mode)) {  // 分支预测优化
     return true;
   }
 
@@ -334,7 +338,7 @@ bool Component<M0, M1, NullType, NullType>::Initialize(
   readers_.push_back(std::move(reader0));
   readers_.push_back(std::move(reader1));
 
-  if (cyber_unlikely(!is_reality_mode)) {
+  if (cyber_unlikely(!is_reality_mode)) {  // 分支预测优化
     return true;
   }
 

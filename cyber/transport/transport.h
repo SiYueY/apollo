@@ -49,36 +49,43 @@ using apollo::cyber::proto::OptionalMode;
 
 class Transport {
  public:
+  /* 析构函数*/
   virtual ~Transport();
 
+  /* 关闭 */
   void Shutdown();
 
+  /* 创建 Transmitter */
   template <typename M>
   auto CreateTransmitter(const RoleAttributes& attr,
                          const OptionalMode& mode = OptionalMode::HYBRID) ->
       typename std::shared_ptr<Transmitter<M>>;
 
+  /* 创建 Receiver */
   template <typename M>
   auto CreateReceiver(const RoleAttributes& attr,
                       const typename Receiver<M>::MessageListener& msg_listener,
                       const OptionalMode& mode = OptionalMode::HYBRID) ->
       typename std::shared_ptr<Receiver<M>>;
 
+  /* 获取 Participant */
   ParticipantPtr participant() const { return participant_; }
 
  private:
+  /* 创建 Participant */
   void CreateParticipant();
 
-  std::atomic<bool> is_shutdown_ = {false};
-  ParticipantPtr participant_ = nullptr;
-  NotifierPtr notifier_ = nullptr;
-  IntraDispatcherPtr intra_dispatcher_ = nullptr;
-  ShmDispatcherPtr shm_dispatcher_ = nullptr;
-  RtpsDispatcherPtr rtps_dispatcher_ = nullptr;
+  std::atomic<bool> is_shutdown_ = {false};        // 是否关闭
+  ParticipantPtr participant_ = nullptr;           // Domain Participant
+  NotifierPtr notifier_ = nullptr;                 // Notifier
+  IntraDispatcherPtr intra_dispatcher_ = nullptr;  // 进程内通信, Intra Dispatcher
+  ShmDispatcherPtr shm_dispatcher_ = nullptr;      // 进程间通信, SHM Dispatcher
+  RtpsDispatcherPtr rtps_dispatcher_ = nullptr;    // 跨主机通信, RTPS Dispatcher
 
-  DECLARE_SINGLETON(Transport)
+  DECLARE_SINGLETON(Transport)                     // 单例模式
 };
 
+/* 创建 Transmitter */
 template <typename M>
 auto Transport::CreateTransmitter(const RoleAttributes& attr,
                                   const OptionalMode& mode) ->
@@ -96,19 +103,23 @@ auto Transport::CreateTransmitter(const RoleAttributes& attr,
   }
 
   switch (mode) {
+    /* 进程内通信，INTRA 模型 */
     case OptionalMode::INTRA:
       transmitter = std::make_shared<IntraTransmitter<M>>(modified_attr);
       break;
 
+    /* 进程间通信，SHM 模型 */
     case OptionalMode::SHM:
       transmitter = std::make_shared<ShmTransmitter<M>>(modified_attr);
       break;
 
+    /* 跨主机通信，RTPS 模型 */
     case OptionalMode::RTPS:
       transmitter =
           std::make_shared<RtpsTransmitter<M>>(modified_attr, participant());
       break;
 
+    /* 默认模式，HYBRID 模型 */
     default:
       transmitter =
           std::make_shared<HybridTransmitter<M>>(modified_attr, participant());
@@ -122,6 +133,7 @@ auto Transport::CreateTransmitter(const RoleAttributes& attr,
   return transmitter;
 }
 
+/* 创建Receiver */
 template <typename M>
 auto Transport::CreateReceiver(
     const RoleAttributes& attr,
@@ -140,19 +152,23 @@ auto Transport::CreateReceiver(
   }
 
   switch (mode) {
+    /* 进程内通信，INTRA 模型 */
     case OptionalMode::INTRA:
       receiver =
           std::make_shared<IntraReceiver<M>>(modified_attr, msg_listener);
       break;
 
+    /* 进程间通信，SHM 模型 */
     case OptionalMode::SHM:
       receiver = std::make_shared<ShmReceiver<M>>(modified_attr, msg_listener);
       break;
 
+    /* 跨主机通信，RTPS 模型 */
     case OptionalMode::RTPS:
       receiver = std::make_shared<RtpsReceiver<M>>(modified_attr, msg_listener);
       break;
 
+    /* 默认模式，HYBRID 模型 */
     default:
       receiver = std::make_shared<HybridReceiver<M>>(
           modified_attr, msg_listener, participant());

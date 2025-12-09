@@ -22,6 +22,7 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 构造函数 */
 Endpoint::Endpoint(const RoleAttributes& attr)
     : enabled_(false), id_(), attr_(attr) {
   if (!attr_.has_host_name()) {
@@ -37,6 +38,7 @@ Endpoint::Endpoint(const RoleAttributes& attr)
   }
 }
 
+/* 析构函数 */
 Endpoint::~Endpoint() {}
 
 }  // namespace transport

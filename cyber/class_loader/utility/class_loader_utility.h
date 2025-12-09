@@ -33,7 +33,7 @@
 #include "cyber/common/log.h"
 
 /**
- *  class register implement
+ *  class register implement 类注册器实现
  */
 namespace apollo {
 namespace cyber {

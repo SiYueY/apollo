@@ -25,19 +25,28 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* PosixSegment */
 class PosixSegment : public Segment {
  public:
+  /* 构造函数 */
   explicit PosixSegment(uint64_t channel_id);
+  /* 析构函数 */
   virtual ~PosixSegment();
 
+  /* 获取共享内存类型 */
   static const char* Type() { return "posix"; }
 
  private:
+  /* 重置 */
   void Reset() override;
+  /* 移除 */
   bool Remove() override;
+  /* 仅仅打开共享内存 */
   bool OpenOnly() override;
+  /* 打开或创建共享内存 */
   bool OpenOrCreate() override;
 
+  /* 共享内存名称 */
   std::string shm_name_;
 };
 

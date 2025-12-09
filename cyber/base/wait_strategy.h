@@ -27,16 +27,20 @@ namespace apollo {
 namespace cyber {
 namespace base {
 
+/* Wait Strategy 等待策略 */
 class WaitStrategy {
  public:
   virtual void NotifyOne() {}
   virtual void BreakAllWait() {}
   virtual bool EmptyWait() = 0;
+  /* 析构函数 */
   virtual ~WaitStrategy() {}
 };
 
+/* Block Wait Strategy 阻塞等待策略 */
 class BlockWaitStrategy : public WaitStrategy {
  public:
+  /* 构造函数 */
   BlockWaitStrategy() {}
   void NotifyOne() override { cv_.notify_one(); }
 

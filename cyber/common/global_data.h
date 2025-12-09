@@ -38,33 +38,47 @@ using ::apollo::cyber::proto::ClockMode;
 using ::apollo::cyber::proto::CyberConfig;
 using ::apollo::cyber::proto::RunMode;
 
+/* 全局数据 */
 class GlobalData {
  public:
+  /* 析构函数 */
   ~GlobalData();
 
+  /* 进程ID */
   int ProcessId() const;
 
+  /* 设置/获取进程组 */
   void SetProcessGroup(const std::string& process_group);
   const std::string& ProcessGroup() const;
 
+  /* 设置/获取组件数量 */
   void SetComponentNums(const int component_nums);
   int ComponentNums() const;
 
+  /* 设置/获取调度策略 */
   void SetSchedName(const std::string& sched_name);
   const std::string& SchedName() const;
 
+  /* Host IP */
   const std::string& HostIp() const;
 
+  /* Host Name */
   const std::string& HostName() const;
 
+  /* Cyber配置 */
   const CyberConfig& Config() const;
 
+  /* 启用/禁用仿真模式 */
   void EnableSimulationMode();
   void DisableSimulationMode();
 
+  /* 是否为真实模式 */
   bool IsRealityMode() const;
+
+  /* 是否为模拟时间模式 */
   bool IsMockTimeMode() const;
 
+  /* Channel是否启用共享内存 */
   bool IsChannelEnableArenaShm(std::string channel_name) const;
   bool IsChannelEnableArenaShm(uint64_t channel_id) const;
   apollo::cyber::proto::ArenaChannelConf GetChannelArenaConf(
@@ -72,44 +86,53 @@ class GlobalData {
   apollo::cyber::proto::ArenaChannelConf GetChannelArenaConf(
       uint64_t channel_id) const&;
 
+  /* 生成 Hash ID */
   static uint64_t GenerateHashId(const std::string& name) {
     return common::Hash(name);
   }
 
+  /* 注册/获取节点 */
   static uint64_t RegisterNode(const std::string& node_name);
   static std::string GetNodeById(uint64_t id);
 
+  /* 注册/获取Channel */
   static uint64_t RegisterChannel(const std::string& channel);
   static std::string GetChannelById(uint64_t id);
 
+  /* 注册/获取Service */
   static uint64_t RegisterService(const std::string& service);
   static std::string GetServiceById(uint64_t id);
 
+  /* 注册/获取TaskName */
   static uint64_t RegisterTaskName(const std::string& task_name);
   static std::string GetTaskNameById(uint64_t id);
 
  private:
+  /* 初始化Host信息 */
   void InitHostInfo();
+  /* 初始化配置 */
   bool InitConfig();
 
-  // global config
+  // global config 全局Cyber配置
   CyberConfig config_;
 
-  // host info
+  // host info Host信息
   std::string host_ip_;
   std::string host_name_;
 
-  // process info
+  // process info 进程信息
   int process_id_;
   std::string process_group_;
 
+  // component nums 组件数量
   int component_nums_ = 0;
 
-  // sched policy info
+  // sched policy info 调度策略信息
   std::string sched_name_ = "CYBER_DEFAULT";
 
-  // run mode
+  // run mode 运行模式
   RunMode run_mode_;
+  // clock mode 时钟模式
   ClockMode clock_mode_;
 
   static AtomicHashMap<uint64_t, std::string, 512> node_id_map_;

@@ -26,7 +26,9 @@ using apollo::cyber::common::GetEnv;
 SysMo::SysMo() { Start(); }
 
 void SysMo::Start() {
+  /* 获取环境变量sysmo_start */
   auto sysmo_start = GetEnv("sysmo_start");
+  /* 若环境变量sysmo_start不为空且值为1，则启动SysMo监控线程 */
   if (sysmo_start != "" && std::stoi(sysmo_start)) {
     start_ = true;
     sysmo_ = std::thread(&SysMo::Checker, this);

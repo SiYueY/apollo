@@ -31,7 +31,7 @@ namespace class_loader {
 
 /**
  *  for library load,createclass object
- *  类加载器: 加载动态库，并实例化对象.
+ *  类加载器: 加载动态库并实例化对象.
  */
 class ClassLoader {
  public:
@@ -64,18 +64,27 @@ class ClassLoader {
   void OnClassObjDeleter(Base* obj);
 
  private:
-  std::string library_path_;  /* 动态库的路径 */
-  int loadlib_ref_count_; /* 动态库加载次数的引用计数 */
-  std::mutex loadlib_ref_count_mutex_;  /* 动态库加载次数的引用计数的互斥锁 */
-  int classobj_ref_count_;  /* 类对象的引用计数 */
-  std::mutex classobj_ref_count_mutex_; /* 类对象的引用技术的互斥锁 */
+  /* 动态库路径 */
+  std::string library_path_;
+  
+  /* 动态库加载次数的引用计数 */
+  int loadlib_ref_count_;
+  /* 互斥锁 */
+  std::mutex loadlib_ref_count_mutex_;
+
+  /* 类对象的引用计数 */
+  int classobj_ref_count_;
+  /* 互斥锁 */
+  std::mutex classobj_ref_count_mutex_;
 };
 
+/* 获取有效类名称 */
 template <typename Base>
 std::vector<std::string> ClassLoader::GetValidClassNames() {
   return (utility::GetValidClassNames<Base>(this));
 }
 
+/* 类是否有效 */
 template <typename Base>
 bool ClassLoader::IsClassValid(const std::string& class_name) {
   std::vector<std::string> valid_classes = GetValidClassNames<Base>();
@@ -112,6 +121,7 @@ std::shared_ptr<Base> ClassLoader::CreateClassObj(
   return classObjSharePtr;
 }
 
+/* 删除类对象 */
 template <typename Base>
 void ClassLoader::OnClassObjDeleter(Base* obj) {
   if (nullptr == obj) {

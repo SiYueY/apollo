@@ -63,7 +63,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
     scheduler::Instance()->RemoveTask(node_->Name());
   }
 
-  /* 获取Protobuf格式的配置*/
+  /* 获取 Protobuf 格式的配置*/
   template <typename T>
   bool GetProtoConfig(T* config) const {
     return common::GetProtoFromFile(config_file_path_, config);
@@ -124,11 +124,11 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
     }
   }
 
-  /* 每个组件 component 会自动创建一个节点 node ，并且可挂载多个 reader. */
-  std::atomic<bool> is_shutdown_ = {false};
-  std::shared_ptr<Node> node_ = nullptr;
-  std::string config_file_path_ = "";
-  std::vector<std::shared_ptr<ReaderBase>> readers_;
+  /* 每个组件 component 会自动创建节点 node ，并且可挂载多个 reader. */
+  std::atomic<bool> is_shutdown_ = {false};  // 是否关闭
+  std::shared_ptr<Node> node_ = nullptr;  // 节点
+  std::string config_file_path_ = "";  // 配置文件路径
+  std::vector<std::shared_ptr<ReaderBase>> readers_;  // Reader 列表
 };
 
 }  // namespace cyber

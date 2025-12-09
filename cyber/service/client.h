@@ -35,7 +35,7 @@ namespace apollo {
 namespace cyber {
 
 /**
- * @class Client
+ * @class Client 客户端：向服务端发送请求并获取响应
  * @brief Client get `Response` from a responding `Service` by sending a Request
  *
  * @tparam Request the `Service` request type
@@ -46,7 +46,9 @@ namespace cyber {
 template <typename Request, typename Response>
 class Client : public ClientBase {
  public:
+  /* 请求 */
   using SharedRequest = typename std::shared_ptr<Request>;
+  /* 响应 */
   using SharedResponse = typename std::shared_ptr<Response>;
   using Promise = std::promise<SharedResponse>;
   using SharedPromise = std::shared_ptr<Promise>;
@@ -116,7 +118,7 @@ class Client : public ClientBase {
   /**
    * @brief Send Request shared ptr asynchronously and invoke `cb` after we get
    * response
-   *
+   * 异步发送请求，并在收到响应后调用回调函数`cb`
    * @param request Request shared ptr
    * @param cb callback function after we get response
    * @return SharedFuture a `std::future` shared ptr
@@ -125,16 +127,19 @@ class Client : public ClientBase {
 
   /**
    * @brief Is the Service is ready?
+   * 服务是否就绪
    */
   bool ServiceIsReady() const;
 
   /**
    * @brief destroy this Client
+   * 销毁客户端
    */
   void Destroy();
 
   /**
    * @brief wait for the connection with the Service established
+   * 等待与服务端的连接建立
    *
    * @tparam RatioT timeout unit, default is std::milli
    * @param timeout wait time in unit of `RatioT`
@@ -149,13 +154,17 @@ class Client : public ClientBase {
   }
 
  private:
+  /* 处理响应 */
   void HandleResponse(const std::shared_ptr<Response>& response,
                       const transport::MessageInfo& request_info);
 
+  /* 是否初始化 */
   bool IsInit(void) const { return response_receiver_ != nullptr; }
 
+  /* 节点名称 */
   std::string node_name_;
 
+  /* 响应Response回调函数 */
   std::function<void(const std::shared_ptr<Response>&,
                      const transport::MessageInfo&)>
       response_callback_;

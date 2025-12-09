@@ -4,26 +4,44 @@ package apollo.cyber.proto;
 
 import "cyber/proto/qos_profile.proto";
 
+/* Socket Address */
 message SocketAddr {
+  /* IP Address IP地址 */
   optional string ip = 1;  // dotted decimal
+  /* Port 端口号 */
   optional uint32 port = 2;
 };
 
+/* Role Attributes 角色属性 */
 message RoleAttributes {
+  /* Host Name 主机名称 */
   optional string host_name = 1;
+  /* Host IP 主机IP */
   optional string host_ip = 2;
+  /* Process ID 进程ID */
   optional int32 process_id = 3;
+  /* Node Name 节点名称 */
   optional string node_name = 4;
+  /* Node ID 节点ID */
   optional uint64 node_id = 5;  // hash value of node_name
   // especially for WRITER and READER
+  /* Channel Name 通道名称 */
   optional string channel_name = 6;
+  /* Channel ID 通道ID */
   optional uint64 channel_id = 7;  // hash value of channel_name
+  /* Message Type 消息类型 */
   optional string message_type = 8;
+  /* Protocol Description 协议描述 */
   optional bytes proto_desc = 9;
+  /* ID ID */
   optional uint64 id = 10;
+  /* QoS Profile Qos配置文件 */
   optional QosProfile qos_profile = 11;
+  /* Socket Address Socket地址 */
   optional SocketAddr socket_addr = 12;  // reserved for socket communication
   // especially for SERVER and CLIENT
+  /* Service Name 服务名称 */
   optional string service_name = 13;
+  /* Service ID 服务ID */
   optional uint64 service_id = 14;  // hash value of service_name
 };

@@ -23,12 +23,17 @@ namespace apollo {
 namespace cyber {
 namespace scheduler {
 
+/* Conditon Variable Wrapper */
 class CvWrapper {
  public:
+  /* 禁用拷贝赋值运算符 */
   CvWrapper& operator=(const CvWrapper& other) = delete;
+
+  /* 获取Conditon Variable */
   std::condition_variable& Cv() { return cv_; }
 
  private:
+  /* Conditon Variable */
   mutable std::condition_variable cv_;
 };
 

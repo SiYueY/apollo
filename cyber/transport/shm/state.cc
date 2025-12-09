@@ -20,9 +20,11 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 构造函数 */
 State::State(const uint64_t& ceiling_msg_size)
     : ceiling_msg_size_(ceiling_msg_size) {}
 
+/* 析构函数 */
 State::~State() {}
 
 }  // namespace transport

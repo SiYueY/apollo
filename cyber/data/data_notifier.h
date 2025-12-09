@@ -35,14 +35,12 @@ using apollo::cyber::Time;
 using apollo::cyber::base::AtomicHashMap;
 using apollo::cyber::event::PerfEventCache;
 
-/* Notifier 结构体 */
+/* Notifier */
 struct Notifier {
-  // 函数类型，存储回调函数
-  std::function<void()> callback;
+  std::function<void()> callback;  // 回调函数
 };
 
-/* DataNotifier：单例模式，用于管理回调通知，其提供添加通知器和触发通知的功能.
- */
+/* DataNotifier：单例模式，用于管理回调通知，其提供添加通知器和触发通知的功能. */
 class DataNotifier {
  public:
   using NotifyVector = std::vector<std::shared_ptr<Notifier>>;

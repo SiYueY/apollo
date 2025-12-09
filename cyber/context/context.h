@@ -27,7 +27,9 @@ namespace context {
 
 class Context {
  public:
+  /* 构造函数 */
   Context() = default;
+  /* 析构函数 */
   ~Context() = default;
 
   /**
@@ -92,6 +94,7 @@ class Context {
 
  private:
   std::map<std::string, std::shared_ptr<void>> m_map_;
+  /* 互斥锁 */
   std::mutex m_mutex_;
 };
 

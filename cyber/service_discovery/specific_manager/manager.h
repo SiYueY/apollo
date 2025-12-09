@@ -47,7 +47,7 @@ using proto::RoleAttributes;
 using proto::RoleType;
 
 /**
- * @class Manager
+ * @class Manager 基类
  * @brief Base class for management of Topology elements.
  * Manager can Join/Leave the Topology, and Listen the topology change
  */

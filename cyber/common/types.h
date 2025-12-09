@@ -22,6 +22,7 @@
 namespace apollo {
 namespace cyber {
 
+/* 空类型，在模板编程中充当占位符，表示“无消息类型”以简化模板特化 */
 class NullType {};
 
 // Return code definition for cyber internal function return.
@@ -35,9 +36,9 @@ enum ReturnCode {
  */
 enum Relation : std::uint8_t {
   NO_RELATION = 0,
-  DIFF_HOST,  // different host
-  DIFF_PROC,  // same host, but different process
-  SAME_PROC,  // same process
+  DIFF_HOST,  // different host 不同主机
+  DIFF_PROC,  // same host, but different process 同一主机不同进程
+  SAME_PROC,  // same process 同一进程
 };
 
 static const char SRV_CHANNEL_REQ_SUFFIX[] = "__SRV__REQUEST";

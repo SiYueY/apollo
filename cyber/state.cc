@@ -22,11 +22,14 @@ namespace apollo {
 namespace cyber {
 
 namespace {
+// 全局的原子变量 g_cyber_state 存储Cyber框架状态, 以确保在多线程环境下的安全访问
 std::atomic<State> g_cyber_state;
 }
 
-State GetState() { return g_cyber_state.load(); }
+/* 获取状态 */
+State GetCyberState() { return g_cyber_state.load(); }
 
+/* 设置状态 */
 void SetState(const State& state) { g_cyber_state.store(state); }
 
 }  // namespace cyber

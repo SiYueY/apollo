@@ -24,6 +24,7 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 数据块 */
 class Block {
   friend class Segment;
 

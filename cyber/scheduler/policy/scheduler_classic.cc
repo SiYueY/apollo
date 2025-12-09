@@ -38,7 +38,9 @@ using apollo::cyber::common::PathExists;
 using apollo::cyber::common::WorkRoot;
 using apollo::cyber::croutine::RoutineState;
 
+/* 构造函数 */
 SchedulerClassic::SchedulerClassic() {
+  /* 读取调度配置文件 */
   std::string conf("conf/");
   conf.append(GlobalData::Instance()->ProcessGroup()).append(".conf");
   auto cfg_file = GetAbsolutePath(WorkRoot(), conf);
@@ -81,6 +83,7 @@ SchedulerClassic::SchedulerClassic() {
   CreateProcessor();
 }
 
+/* 创建执行器Processor */
 void SchedulerClassic::CreateProcessor() {
   // 读取调度配置文件
   for (auto& group : classic_conf_.groups()) {
@@ -118,6 +121,7 @@ void SchedulerClassic::CreateProcessor() {
   }
 }
 
+/* 派发任务 */
 bool SchedulerClassic::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
   // we use multi-key mutex to prevent race condition
   // when del && add cr with same crid
@@ -171,6 +175,7 @@ bool SchedulerClassic::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
   return true;
 }
 
+/* 唤醒Processor */
 bool SchedulerClassic::NotifyProcessor(uint64_t crid) {
   if (cyber_unlikely(stop_)) {
     return true;
@@ -192,6 +197,7 @@ bool SchedulerClassic::NotifyProcessor(uint64_t crid) {
   return false;
 }
 
+/* 删除任务 */
 bool SchedulerClassic::RemoveTask(const std::string& name) {
   if (cyber_unlikely(stop_)) {
     return true;
@@ -201,6 +207,7 @@ bool SchedulerClassic::RemoveTask(const std::string& name) {
   return RemoveCRoutine(crid);
 }
 
+/* 删除协程 */
 bool SchedulerClassic::RemoveCRoutine(uint64_t crid) {
   // we use multi-key mutex to prevent race condition
   // when del && add cr with same crid

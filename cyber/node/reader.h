@@ -42,6 +42,7 @@
 namespace apollo {
 namespace cyber {
 
+/* 回调函数 */
 template <typename M0>
 using CallbackFunc = std::function<void(const std::shared_ptr<M0>&)>;
 

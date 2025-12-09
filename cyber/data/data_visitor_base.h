@@ -33,21 +33,23 @@ namespace data {
 /* 消息访问器基类 */
 class DataVisitorBase {
  public:
-  // 构造函数
+  /* 构造函数*/
   DataVisitorBase() : notifier_(new Notifier()) {}
 
-  // 设置注册回调
+  /* 注册通知回调函数 */
   void RegisterNotifyCallback(std::function<void()>&& callback) {
     notifier_->callback = callback;
   }
 
  protected:
+  /* 禁用拷贝构造函数 */
   DataVisitorBase(const DataVisitorBase&) = delete;
+  /* 禁用拷贝赋值运算符 */
   DataVisitorBase& operator=(const DataVisitorBase&) = delete;
 
-  // 下一次消息的 index
+  /* 下一消息索引 */
   uint64_t next_msg_index_ = 0;
-  // DataNotifier单例
+  /* DataNotifier单例 */
   DataNotifier* data_notifier_ = DataNotifier::Instance();
   std::shared_ptr<Notifier> notifier_;
 };

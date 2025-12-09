@@ -33,19 +33,26 @@ namespace apollo {
 namespace cyber {
 namespace base {
 
+/* Thread Pool 线程池 */
 class ThreadPool {
  public:
+  /* 构造函数 */
   explicit ThreadPool(std::size_t thread_num, std::size_t max_task_num = 1000);
 
+  /* 入队 */
   template <typename F, typename... Args>
   auto Enqueue(F&& f, Args&&... args)
       -> std::future<typename std::result_of<F(Args...)>::type>;
 
+  /* 析构函数 */
   ~ThreadPool();
 
  private:
+  /* 工作线程列表 */
   std::vector<std::thread> workers_;
+  /* 任务队列 */
   BoundedQueue<std::function<void()>> task_queue_;
+  /* 停止标志 */
   std::atomic_bool stop_;
 };
 

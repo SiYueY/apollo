@@ -46,6 +46,7 @@ std::atomic<Scheduler*> instance = {nullptr};
 std::mutex mutex;
 }  // namespace
 
+/* 工厂模式 */
 Scheduler* Instance() {
   Scheduler* obj = instance.load(std::memory_order_acquire);
   if (obj == nullptr) {

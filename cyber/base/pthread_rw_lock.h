@@ -24,11 +24,13 @@ namespace apollo {
 namespace cyber {
 namespace base {
 
+/* pthread 读写锁 */
 class PthreadRWLock {
   friend class ReadLockGuard<PthreadRWLock>;
   friend class WriteLockGuard<PthreadRWLock>;
 
  public:
+  /* 构造函数 */
   explicit PthreadRWLock(bool writer) {
     pthread_rwlockattr_init(&rwlock_attr_);
     if (writer) {

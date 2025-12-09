@@ -38,36 +38,51 @@ using croutine::CRoutine;
 
 /* 快照 snapshot */
 struct Snapshot {
+  /* 执行开始时间 */
   std::atomic<uint64_t> execute_start_time = {0};
+  /* 执行器id */
   std::atomic<pid_t> processor_id = {0};
+  /* 协程名称 */
   std::string routine_name;
 };
 
 /* 执行器 Processor */
 class Processor {
  public:
+  /* 构造函数 */
   Processor();
+  /* 析构函数 */
   virtual ~Processor();
 
+  /* 运行 */
   void Run();
+  /* 停止 */
   void Stop();
+  /* 绑定上下文 */
   void BindContext(const std::shared_ptr<ProcessorContext>& context);
+  /* 获取线程 */
   std::thread* Thread() { return &thread_; }
+  /* 获取线程id */
   std::atomic<pid_t>& Tid();
 
+  /* 执行器快照 */
   std::shared_ptr<Snapshot> ProcSnapshot() { return snap_shot_; }
 
  private:
+  /* 执行器上下文 */
   std::shared_ptr<ProcessorContext> context_;
-
+  /* 条件变量 */
   std::condition_variable cv_ctx_;
   std::once_flag thread_flag_;
+  /* 互斥锁 */
   std::mutex mtx_ctx_;
+  /* 线程 */
   std::thread thread_;
-
+  /* 线程id */
   std::atomic<pid_t> tid_{-1};
+  /* 运行状态 */
   std::atomic<bool> running_{false};
-
+  /* 快照 */
   std::shared_ptr<Snapshot> snap_shot_ = std::make_shared<Snapshot>();
 };
 

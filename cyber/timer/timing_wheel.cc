@@ -28,7 +28,9 @@ void TimingWheel::Start() {
   std::lock_guard<std::mutex> lock(running_mutex_);
   if (!running_) {
     ADEBUG << "TimeWheel start ok";
+    /* 更新running_状态 */
     running_ = true;
+    /* 启动tick线程 */
     tick_thread_ = std::thread([this]() { this->TickFunc(); });
     scheduler::Instance()->SetInnerThreadAttr("timer", &tick_thread_);
   }
@@ -38,32 +40,41 @@ void TimingWheel::Start() {
 void TimingWheel::Shutdown() {
   std::lock_guard<std::mutex> lock(running_mutex_);
   if (running_) {
+    /* 更新running_状态 */
     running_ = false;
+    /* 等待tick线程结束 */
     if (tick_thread_.joinable()) {
       tick_thread_.join();
     }
   }
 }
 
-/* 时间轮每隔一段时间执行一次 */
+/* Tick */
 void TimingWheel::Tick() {
   auto& bucket = work_wheel_[current_work_wheel_index_];
   {
+    /* 加锁 */
     std::lock_guard<std::mutex> lock(bucket.mutex());
+
+    /* 遍历当前TimerBucket中的定时任务 */
     auto ite = bucket.task_list().begin();
     while (ite != bucket.task_list().end()) {
+      /* std::weak_ptr::lock() 创建管理被引用的对象的 shared_ptr */
       auto task = ite->lock();
       if (task) {
         ADEBUG << "index: " << current_work_wheel_index_
                << " timer id: " << task->timer_id_;
+        /* 回调函数 */
         auto* callback =
             reinterpret_cast<std::function<void()>*>(&(task->callback));
+        /* 异步执行 */
         cyber::Async([this, callback] {
           if (this->running_) {
             (*callback)();
           }
         });
       }
+      /* 删除已执行的定时任务，迭代器后移 */
       ite = bucket.task_list().erase(ite);
     }
   }
@@ -80,6 +91,8 @@ void TimingWheel::AddTask(const std::shared_ptr<TimerTask>& task,
   if (!running_) {
     Start();
   }
+
+  /* 工作时间轮索引 */
   auto work_wheel_index = current_work_wheel_index +
                           static_cast<uint64_t>(std::ceil(
                               static_cast<double>(task->next_fire_duration_ms) /
@@ -123,6 +136,7 @@ void TimingWheel::Cascade(const uint64_t assistant_wheel_index) {
   }
 }
 
+/* Tick 函数 */
 void TimingWheel::TickFunc() {
   Rate rate(TIMER_RESOLUTION_MS * 1000000);  // ms to ns
   while (running_) {

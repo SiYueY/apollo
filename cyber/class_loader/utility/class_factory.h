@@ -46,9 +46,13 @@ class AbstractClassFactoryBase {
   /* ClassLoader是否属于该ClassFactory */
   bool IsOwnedBy(const ClassLoader* loader);
   bool IsOwnedByAnybody();
+  /* 获取所有ClassLoader */
   std::vector<ClassLoader*> GetRelativeClassLoaders();
+  /* 获取相对动态库路径 */
   const std::string GetRelativeLibraryPath() const;
+  /* 获取基类名称 */
   const std::string GetBaseClassName() const;
+  /* 获取类名称 */
   const std::string GetClassName() const;
 
  protected:
@@ -66,11 +70,15 @@ class AbstractClassFactory : public AbstractClassFactoryBase {
                        const std::string& base_class_name)
       : AbstractClassFactoryBase(class_name, base_class_name) {}
 
+  /* 创建对象 */
   virtual Base* CreateObj() const = 0;
 
  private:
+  /* 构造函数*/
   AbstractClassFactory();
+  /* 拷贝构造函数 */
   AbstractClassFactory(const AbstractClassFactory&);
+  /* 拷贝赋值运算符 */
   AbstractClassFactory& operator=(const AbstractClassFactory&);
 };
 
@@ -78,10 +86,12 @@ class AbstractClassFactory : public AbstractClassFactoryBase {
 template <typename ClassObject, typename Base>
 class ClassFactory : public AbstractClassFactory<Base> {
  public:
+  /* 构造函数 */
   ClassFactory(const std::string& class_name,
                const std::string& base_class_name)
       : AbstractClassFactory<Base>(class_name, base_class_name) {}
 
+  /* 创建对象 */
   Base* CreateObj() const { return new ClassObject; }
 };
 

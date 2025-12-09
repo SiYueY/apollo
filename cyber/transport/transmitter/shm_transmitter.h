@@ -47,9 +47,12 @@ class ShmTransmitter : public Transmitter<M> {
  public:
   using MessagePtr = std::shared_ptr<M>;
 
+  /* 构造函数 */
   explicit ShmTransmitter(const RoleAttributes& attr);
+  /* 析构函数 */
   virtual ~ShmTransmitter();
 
+  /* 开启/关闭 */
   void Enable() override;
   void Disable() override;
 
@@ -61,6 +64,7 @@ class ShmTransmitter : public Transmitter<M> {
   bool AcquireMessage(std::shared_ptr<M>& msg);
 
  private:
+  /* 发送消息 */
   bool Transmit(const M& msg, const MessageInfo& msg_info);
 
   SegmentPtr segment_;
@@ -107,11 +111,13 @@ ShmTransmitter<M>::ShmTransmitter(const RoleAttributes& attr)
                     !type_check<M, message::PyMessageWrap>::value;
 }
 
+/* 析构函数 */
 template <typename M>
 ShmTransmitter<M>::~ShmTransmitter() {
   Disable();
 }
 
+/* 开启 */
 template <typename M>
 void ShmTransmitter<M>::Enable(const RoleAttributes& opposite_attr) {
   if (arena_transmit_) {
@@ -182,6 +188,7 @@ void ShmTransmitter<M>::Enable() {
   this->enabled_ = true;
 }
 
+/* 关闭 */
 template <typename M>
 void ShmTransmitter<M>::Disable() {
   if (this->enabled_) {
@@ -191,6 +198,7 @@ void ShmTransmitter<M>::Disable() {
   }
 }
 
+/* 发送消息 */
 template <typename M>
 bool ShmTransmitter<M>::Transmit(const MessagePtr& msg,
                                  const MessageInfo& msg_info) {

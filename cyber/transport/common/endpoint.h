@@ -33,18 +33,23 @@ using EndpointPtr = std::shared_ptr<Endpoint>;
 
 using proto::RoleAttributes;
 
+/* Endpoint 端点 */
 class Endpoint {
  public:
+    /* 构造函数 */
   explicit Endpoint(const RoleAttributes& attr);
+  /* 析构函数 */
   virtual ~Endpoint();
 
+  /* 获取端点ID */
   const Identity& id() const { return id_; }
+  /* 获取端点属性 */
   const RoleAttributes& attributes() const { return attr_; }
 
  protected:
-  bool enabled_;
-  Identity id_;
-  RoleAttributes attr_;
+  bool enabled_;         // 是否启用
+  Identity id_;          // 端点ID
+  RoleAttributes attr_;  // 端点属性
 };
 
 }  // namespace transport

@@ -33,18 +33,19 @@ namespace cyber {
 
 struct TimerTask;
 
-static const uint64_t WORK_WHEEL_SIZE = 512;  // 工作 时间轮大小
-static const uint64_t ASSISTANT_WHEEL_SIZE = 64;  //辅助 时间轮大小
-static const uint64_t TIMER_RESOLUTION_MS = 2;
-static const uint64_t TIMER_MAX_INTERVAL_MS =
+static const uint64_t WORK_WHEEL_SIZE = 512;      // 工作时间轮大小
+static const uint64_t ASSISTANT_WHEEL_SIZE = 64;  //辅助时间轮大小
+static const uint64_t TIMER_RESOLUTION_MS = 2;    // 时间轮分辨率，单位毫秒
+static const uint64_t TIMER_MAX_INTERVAL_MS =     // 时间轮最大时间间隔
     WORK_WHEEL_SIZE * ASSISTANT_WHEEL_SIZE *
-    TIMER_RESOLUTION_MS;  // 时间轮最大时间间隔
+    TIMER_RESOLUTION_MS;
 
 /* 时间轮 */
 class TimingWheel {
  public:
   /* 析构函数 */
   ~TimingWheel() {
+    /* 停止时间轮 */
     if (running_) {
       Shutdown();
     }
@@ -56,7 +57,7 @@ class TimingWheel {
   /* 停止时间轮 */
   void Shutdown();
 
-  /* 时间轮每隔一段时间调用一次 */
+  /* Tick */
   void Tick();
 
   /* 添加定时任务并指定当前时间轮索引 */
@@ -76,24 +77,38 @@ class TimingWheel {
   inline uint64_t TickCount() const { return tick_count_; }
 
  private:
+  /* 获取工作时间轮索引 */
   inline uint64_t GetWorkWheelIndex(const uint64_t index) {
     return index & (WORK_WHEEL_SIZE - 1);
   }
+
+  /* 获取辅助时间轮索引 */
   inline uint64_t GetAssistantWheelIndex(const uint64_t index) {
     return index & (ASSISTANT_WHEEL_SIZE - 1);
   }
 
-  bool running_ = false;                               // 运行状态
-  uint64_t tick_count_ = 0;                            // 滴答次数
-  std::mutex running_mutex_;                           // 运行状态互斥锁
-  TimerBucket work_wheel_[WORK_WHEEL_SIZE];            // 工作轮
-  TimerBucket assistant_wheel_[ASSISTANT_WHEEL_SIZE];  // 辅助轮
-  uint64_t current_work_wheel_index_ = 0;              // 当前工作轮索引
-  std::mutex current_work_wheel_index_mutex_;  // 当前工作轮索引互斥锁
-  uint64_t current_assistant_wheel_index_ = 0;  // 当前辅助轮索引
-  std::mutex current_assistant_wheel_index_mutex_;  // 当前辅助轮索引互斥锁
-  std::thread tick_thread_;                         // 滴答线程
+  /* 是否正在运行 */
+  bool running_ = false;
+  /* 滴答tick次数 */
+  uint64_t tick_count_ = 0;
+  /* running_互斥锁 */
+  std::mutex running_mutex_;
+  /* 工作轮 */
+  TimerBucket work_wheel_[WORK_WHEEL_SIZE];
+  /* 辅助轮 */
+  TimerBucket assistant_wheel_[ASSISTANT_WHEEL_SIZE];
+  /* 当前工作轮索引 */
+  uint64_t current_work_wheel_index_ = 0;
+  /* current_work_wheel_index_互斥锁 */
+  std::mutex current_work_wheel_index_mutex_;
+  /* 当前辅助轮索引 */
+  uint64_t current_assistant_wheel_index_ = 0;
+  /* current_assistant_wheel_index_互斥锁 */
+  std::mutex current_assistant_wheel_index_mutex_;
+  /* 滴答tick线程 */
+  std::thread tick_thread_;
 
+  /* 单例模式 */
   DECLARE_SINGLETON(TimingWheel)
 };
 

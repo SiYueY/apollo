@@ -27,20 +27,27 @@ namespace apollo {
 namespace cyber {
 namespace base {
 
+/* 无锁无界队列 */
 template <typename T>
 class UnboundedQueue {
  public:
+  /* 构造函数 */
   UnboundedQueue() { Reset(); }
+
+  /* 禁用拷贝构造函数和拷贝赋值运算符 */
   UnboundedQueue& operator=(const UnboundedQueue& other) = delete;
   UnboundedQueue(const UnboundedQueue& other) = delete;
 
+  /* 析构函数 */
   ~UnboundedQueue() { Destroy(); }
 
+  /* 清空 */
   void Clear() {
     Destroy();
     Reset();
   }
 
+  /* 入队 */
   void Enqueue(const T& element) {
     auto node = new Node();
     node->data = element;
@@ -56,6 +63,7 @@ class UnboundedQueue {
     }
   }
 
+  /* 出队 */
   bool Dequeue(T* element) {
     Node* old_head = head_.load();
     Node* head_next = nullptr;
@@ -72,11 +80,14 @@ class UnboundedQueue {
     return true;
   }
 
+  /* 队列大小 */
   size_t Size() { return size_.load(); }
 
+  /* 是否为空 */
   bool Empty() { return size_.load() == 0; }
 
  private:
+  /* Node 节点结构 */
   struct Node {
     T data;
     std::atomic<uint32_t> ref_count;
@@ -90,6 +101,7 @@ class UnboundedQueue {
     }
   };
 
+  /* 重置 */
   void Reset() {
     auto node = new Node();
     head_.store(node);
@@ -97,6 +109,7 @@ class UnboundedQueue {
     size_.store(0);
   }
 
+  /* 销毁 */
   void Destroy() {
     auto ite = head_.load();
     Node* tmp = nullptr;
@@ -107,8 +120,11 @@ class UnboundedQueue {
     }
   }
 
+  /* 队头 */
   std::atomic<Node*> head_;
+  /* 队尾 */
   std::atomic<Node*> tail_;
+  /* 队列大小 */
   std::atomic<size_t> size_;
 };
 

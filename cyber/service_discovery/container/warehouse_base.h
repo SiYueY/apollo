@@ -26,20 +26,28 @@ namespace apollo {
 namespace cyber {
 namespace service_discovery {
 
+/* 仓库基类 */
 class WarehouseBase {
  public:
+  /* 构造函数 */
   WarehouseBase() {}
+  /* 析构函数 */
   virtual ~WarehouseBase() {}
 
+  /* 添加 */
   virtual bool Add(uint64_t key, const RolePtr& role, bool ignore_if_exist) = 0;
 
+  /* 清空 */
   virtual void Clear() = 0;
+  /* 大小 */
   virtual std::size_t Size() = 0;
 
+  /* 移除 */
   virtual void Remove(uint64_t key) = 0;
   virtual void Remove(uint64_t key, const RolePtr& role) = 0;
   virtual void Remove(const proto::RoleAttributes& target_attr) = 0;
 
+  /* 搜索 */
   virtual bool Search(uint64_t key) = 0;
   virtual bool Search(uint64_t key, RolePtr* first_matched_role) = 0;
   virtual bool Search(uint64_t key,
@@ -59,6 +67,7 @@ class WarehouseBase {
       const proto::RoleAttributes& target_attr,
       std::vector<proto::RoleAttributes>* matched_roles_attr) = 0;
 
+  /* 获取所有Role */
   virtual void GetAllRoles(std::vector<RolePtr>* roles) = 0;
   virtual void GetAllRoles(std::vector<proto::RoleAttributes>* roles_attr) = 0;
 };

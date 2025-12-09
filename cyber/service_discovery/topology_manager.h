@@ -47,19 +47,20 @@ using ServiceManagerPtr = std::shared_ptr<ServiceManager>;
 
 /**
  * @class TopologyManager
+ * TopologyManager 描述 Node, Channel, Service, Writer, Reader, Client和Server之间的关系
  * @brief elements in Cyber -- Node, Channel, Service, Writer, Reader, Client
  * and Server's relationship is presented by Topology. You can Imagine that a
  * directed graph -- Node is the container of Server/Client/Writer/Reader, and
  * they are the vertice of the graph and Channel is the Edge from Writer flow to
  * the Reader, Service is the Edge from Server to Client. Thus we call Writer
  * and Server `Upstream`, Reader and Client `Downstream` To generate this graph,
- * we use TopologyManager, it has three sub managers -- NodeManager: You can
- * find Nodes in this topology ChannelManager: You can find Channels in this
- * topology, and their Writers and Readers ServiceManager: You can find Services
- * in this topology, and their Servers and Clients TopologyManager use
- * fast-rtps' Participant to communicate. It can broadcast Join or Leave
- * messages of those elements. Also, you can register you own `ChangeFunc` to
- * monitor topology change
+ * we use TopologyManager, it has three sub managers 
+ * --- NodeManager: You can find Nodes in this topology；
+ * --- ChannelManager: You can find Channels in this topology；
+ * --- Writers and Readers ServiceManager: You can find Services in this topology
+ * --- Servers and Clients TopologyManager use fast-rtps' Participant to communicate. 
+ * It can broadcast Join or Leave messages of those elements. Also, you can register 
+ * you own `ChangeFunc` to monitor topology change.
  */
 class TopologyManager {
  public:
@@ -70,15 +71,18 @@ class TopologyManager {
   using PartNameContainer =
       std::map<eprosima::fastrtps::rtps::GUID_t, std::string>;
 
+  /* 析构函数 */
   virtual ~TopologyManager();
 
   /**
    * @brief Shutdown the TopologyManager
+   * 关闭
    */
   void Shutdown();
 
   /**
    * @brief To observe the topology change, you can register a `ChangeFunc`
+   * 注册监听函数ChangeFunc以观察拓扑变化
    *
    * @param func is the observe function
    * @return ChangeConnection is the connection that connected to
@@ -88,29 +92,37 @@ class TopologyManager {
 
   /**
    * @brief Remove the observe function connect to `change_signal_` by `conn`
+   * 移除监听函数ChangeFunc
    */
   void RemoveChangeListener(const ChangeConnection& conn);
 
   /**
    * @brief Get shared_ptr for NodeManager
+   * 获取NodeManager的shared_ptr
    */
   NodeManagerPtr& node_manager() { return node_manager_; }
 
   /**
    * @brief Get shared_ptr for ChannelManager
+   * 获取ChannelManager的shared_ptr
    */
   ChannelManagerPtr& channel_manager() { return channel_manager_; }
 
   /**
    * @brief Get shared_ptr for ServiceManager
+   * 获取ServiceManager的shared_ptr
    */
   ServiceManagerPtr& service_manager() { return service_manager_; }
 
  private:
+  /* 初始化TopologyManager */
   bool Init();
 
+  /* 初始化NodeManager */
   bool InitNodeManager();
+  /* 初始化ChannelManager */
   bool InitChannelManager();
+  /* 初始化ServiceManager */
   bool InitServiceManager();
 
   bool CreateParticipant();

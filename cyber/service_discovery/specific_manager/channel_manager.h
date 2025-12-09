@@ -44,31 +44,36 @@ class ChannelManager : public Manager {
   friend class TopologyManager;
 
  public:
+  /* Role属性列表 */
   using RoleAttrVec = std::vector<proto::RoleAttributes>;
+  /* Writer仓库 */
   using WriterWarehouse = MultiValueWarehouse;
+  /* Reader仓库 */
   using ReaderWarehouse = MultiValueWarehouse;
   using ExemptedMessageTypes = std::unordered_set<std::string>;
 
   /**
    * @brief Construct a new Channel Manager object
+   * 构造函数
    */
   ChannelManager();
 
   /**
    * @brief Destroy the Channel Manager object
+   * 析构函数
    */
   virtual ~ChannelManager();
 
   /**
    * @brief Get all channel names in the topology
-   *
+   * 获取Topology中所有的channel名称
    * @param channels result vector
    */
   void GetChannelNames(std::vector<std::string>* channels);
 
   /**
    * @brief Get the Protocol Desc of `channel_name`
-   *
+   * 获取Channel的Protocol描述
    * @param channel_name channel name we want to inquire
    * @param proto_desc result string, empty if inquire failed
    */
@@ -76,7 +81,7 @@ class ChannelManager : public Manager {
 
   /**
    * @brief Get the Msg Type of `channel_name`
-   *
+   * 获取Channel的Msg类型
    * @param channel_name channel name we want to inquire
    * @param msg_type result string, empty if inquire failed
    */
@@ -85,7 +90,7 @@ class ChannelManager : public Manager {
   /**
    * @brief Inquire if there is at least one Writer that publishes
    * `channel_name`
-   *
+   * 给定Channel是否存在Writer
    * @param channel_name channel name we want to inquire
    * @return true if there is at least one Writer
    * @return false if there are no Writers
@@ -94,14 +99,14 @@ class ChannelManager : public Manager {
 
   /**
    * @brief Get All Writers object
-   *
+   * 获取所有的Writer
    * @param writers result RoleAttr vector
    */
   void GetWriters(RoleAttrVec* writers);
 
   /**
    * @brief Get the Writers Of Node object
-   *
+   * 获取Node的所有Writer
    * @param node_name node's name we want to inquire
    * @param writers result RoleAttribute vector
    */
@@ -109,7 +114,7 @@ class ChannelManager : public Manager {
 
   /**
    * @brief Get the Writers Of Channel object
-   *
+   * 获取Channel的所有Writer
    * @param channel_name channel's name we want to inquire
    * @param writers result RoleAttribute vector
    */
@@ -119,7 +124,7 @@ class ChannelManager : public Manager {
   /**
    * @brief Inquire if there is at least one Reader that publishes
    * `channel_name`
-   *
+   * 给定Channel是否存在Reader
    * @param channel_name channel name we want to inquire
    * @return true if there is at least one Reader
    * @return false if there are no Reader
@@ -128,14 +133,14 @@ class ChannelManager : public Manager {
 
   /**
    * @brief Get All Readers object
-   *
+   * 获取所有的Reader
    * @param readers result RoleAttr vector
    */
   void GetReaders(RoleAttrVec* readers);
 
   /**
    * @brief Get the Readers Of Node object
-   *
+   * 获取Node的所有Reader
    * @param node_name node's name we want to inquire
    * @param readers result RoleAttribute vector
    */
@@ -143,7 +148,7 @@ class ChannelManager : public Manager {
 
   /**
    * @brief Get the Readers Of Channel object
-   *
+   * 获取Channel的所有Reader
    * @param channel_name channel's name we want to inquire
    * @param readers result RoleAttribute vector
    */
@@ -155,7 +160,7 @@ class ChannelManager : public Manager {
    * If Node A has writer that publishes channel-1, and Node B has reader that
    * subscribes channel-1 then A is B's Upstream node, and B is A's Downstream
    * node
-   *
+   * 获取Node的Upstream
    * @param node_name node's name we want to inquire
    * @param upstream_nodes result RoleAttribute vector
    */
@@ -164,6 +169,7 @@ class ChannelManager : public Manager {
 
   /**
    * @brief Get the Downstream Of Node object.
+   * 获取Node的Downstream
    * If Node A has writer that publishes channel-1, and Node B has reader that
    * subscribes channel-1 then A is B's Upstream node, and B is A's Downstream
    * node
@@ -184,7 +190,7 @@ class ChannelManager : public Manager {
 
   /**
    * @brief Is `lhs` and `rhs` have same MessageType
-   *
+   * 判断两个消息类型是否相同
    * @param lhs the left message type to compare
    * @param rhs the right message type to compare
    * @return true if type matches
@@ -197,9 +203,12 @@ class ChannelManager : public Manager {
   void Dispose(const ChangeMsg& msg) override;
   void OnTopoModuleLeave(const std::string& host_name, int process_id) override;
 
+  /* 处理Join */
   void DisposeJoin(const ChangeMsg& msg);
+  /* 处理Leave */
   void DisposeLeave(const ChangeMsg& msg);
 
+  /* 扫描消息类型 */
   void ScanMessageType(const ChangeMsg& msg);
 
   ExemptedMessageTypes exempted_msg_types_;

@@ -65,9 +65,9 @@ bool MessageInfo::operator!=(const MessageInfo& another) const {
   return !(*this == another);
 }
 
+/* 序列化 */
 bool MessageInfo::SerializeTo(std::string* dst) const {
   RETURN_VAL_IF_NULL(dst, false);
-
   dst->assign(sender_id_.data(), ID_SIZE);
   dst->append(
     reinterpret_cast<const char*>(&channel_id_), sizeof(channel_id_));
@@ -100,6 +100,7 @@ bool MessageInfo::SerializeTo(char* dst, std::size_t len) const {
   return true;
 }
 
+/* 反序列化 */
 bool MessageInfo::DeserializeFrom(const std::string& src) {
   return DeserializeFrom(src.data(), src.size());
 }

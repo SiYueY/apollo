@@ -28,7 +28,9 @@ namespace apollo {
 namespace cyber {
 namespace mainboard {
 
+/* 默认进程组名称 */
 static const char DEFAULT_process_group_[] = "mainboard_default";
+/* 默认调度策略 */
 static const char DEFAULT_sched_name_[] = "CYBER_DEFAULT";
 
 // code for command line arguments without short parameters
@@ -52,30 +54,44 @@ class ModuleArgument {
   const std::string& GetBinaryName() const;
   /* 获取进程组名称 */
   const std::string& GetProcessGroup() const;
-  /* 获取调度模块名称 */
+  /* 获取调度策略 */
   const std::string& GetSchedName() const;
   /* 获取DAG配置列表 */
   const std::list<std::string>& GetDAGConfList() const;
   /* 获取插件描述列表 */
   const std::list<std::string>& GetPluginDescriptionList() const;
+  /* 是否允许CPU性能分析 */
   const bool GetEnableCpuprofile() const { return enable_cpuprofile_; }
+  /* 获取CPU性能分析文件名 */
   const std::string GetProfileFilename() const { return profile_filename_; }
+  /* 是否允许堆内存分析 */
   const bool GetEnableHeapprofile() const { return enable_heapprofile_; }
+  /* 获取堆内存分析文件名 */
   const std::string GetHeapProfileFilename() const {
     return heapprofile_filename_;
   }
   const bool& GetDisablePluginsAutoLoad() const;
 
  private:
+  /* DAG配置列表 */
   std::list<std::string> dag_conf_list_;
+  /* 插件描述列表 */
   std::list<std::string> plugin_description_list_;
+  /* 二进制模块名称 */
   std::string binary_name_;
+  /* 进程组名称 */
   std::string process_group_;
+  /* 调度策略 */
   std::string sched_name_;
+  /* 是否允许CPU性能分析 */
   bool enable_cpuprofile_ = false;
+  /* CPU性能分析文件名称 */
   std::string profile_filename_;
+  /* 是否允许堆内存分析 */
   bool enable_heapprofile_ = false;
+  /* 堆内存分析文件名称 */
   std::string heapprofile_filename_;
+  /* 是否禁止插件自动加载 */
   bool disable_plugin_autoload_ = false;
 };
 
@@ -89,7 +105,7 @@ inline const std::string& ModuleArgument::GetProcessGroup() const {
   return process_group_;
 }
 
-/* 获取调度模块名称 */
+/* 获取调度策略 */
 inline const std::string& ModuleArgument::GetSchedName() const {
   return sched_name_;
 }

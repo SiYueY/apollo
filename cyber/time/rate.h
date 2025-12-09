@@ -23,19 +23,28 @@
 namespace apollo {
 namespace cyber {
 
+/* Rate 速率 */
 class Rate {
  public:
+  /* 构造函数 */
   explicit Rate(double frequency);
   explicit Rate(uint64_t nanoseconds);
   explicit Rate(const Duration&);
+  /* 休眠 */
   void Sleep();
+  /* 重置 */
   void Reset();
+  /* 循环时间 */
   Duration CycleTime() const;
+  /* 期望循环时间 */
   Duration ExpectedCycleTime() const { return expected_cycle_time_; }
 
  private:
+  /* 开始时间 */
   Time start_;
+  /* 期望循环时间 */
   Duration expected_cycle_time_;
+  /* 实际循环时间 */
   Duration actual_cycle_time_;
 };
 

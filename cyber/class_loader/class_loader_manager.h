@@ -29,7 +29,7 @@ namespace apollo {
 namespace cyber {
 namespace class_loader {
 
-/* 类加载管理器：管理不同的类加载器classloader */
+/* 类加载管理器：管理不同的类加载器ClassLoader,不同的library_path对应不同的ClassLoader */
 class ClassLoaderManager {
  public:
   /* 构造函数 */
@@ -49,6 +49,7 @@ class ClassLoaderManager {
   template <typename Base>
   std::shared_ptr<Base> CreateClassObj(const std::string& class_name,
                                        const std::string& library_path);
+  /* 类是否有效 */
   template <typename Base>
   bool IsClassValid(const std::string& class_name);
   /* 获取类的名称 */
@@ -56,7 +57,7 @@ class ClassLoaderManager {
   std::vector<std::string> GetValidClassNames();
 
   /**
-   * @brief get pathof  library that class belongs to
+   * @brief get path of library that class belongs to 获取类的库路径
    * @param class_name derived class
    * @return path of library that containing the derived class
    */
@@ -64,9 +65,13 @@ class ClassLoaderManager {
   std::string GetClassValidLibrary(const std::string& class_name);
 
  private:
+  /* 获取ClassLoader */
   ClassLoader* GetClassLoaderByLibPath(const std::string& library_path);
+  /* 获取所有有效的ClassLoader */
   std::vector<ClassLoader*> GetAllValidClassLoaders();
+  /* 获取所有有效的library_path */
   std::vector<std::string> GetAllValidLibPath();
+  /* 卸载动态库 */
   int UnloadLibrary(const std::string& library_path);
 
  private:

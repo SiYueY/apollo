@@ -27,34 +27,44 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 消息信息MessageInfo */
 class MessageInfo {
  public:
+  /* 构造函数 */
   MessageInfo();
   MessageInfo(const Identity& sender_id, uint64_t seq_num);
   MessageInfo(const Identity& sender_id, uint64_t seq_num,
               const Identity& spare_id);
   MessageInfo(const MessageInfo& another);
+  /* 析构函数 */
   virtual ~MessageInfo();
 
+  /* 重载拷贝赋值函数 */
   MessageInfo& operator=(const MessageInfo& another);
+  /* 重载等于运算符 */
   bool operator==(const MessageInfo& another) const;
+  /* 重载不等于运算符 */
   bool operator!=(const MessageInfo& another) const;
 
+  /* 序列化和反序列化函数 */
   bool SerializeTo(std::string* dst) const;
   bool SerializeTo(char* dst, std::size_t len) const;
   bool DeserializeFrom(const std::string& src);
   bool DeserializeFrom(const char* src, std::size_t len);
 
-  // getter and setter
+  /* 设置和获取sender_id */
   const Identity& sender_id() const { return sender_id_; }
   void set_sender_id(const Identity& sender_id) { sender_id_ = sender_id; }
 
+  /* 设置和获取channel_id */
   uint64_t channel_id() const { return channel_id_; }
   void set_channel_id(uint64_t channel_id) { channel_id_ = channel_id; }
 
+  /* 设置和获取seq_num */
   uint64_t seq_num() const { return seq_num_; }
   void set_seq_num(uint64_t seq_num) { seq_num_ = seq_num; }
 
+  /* 设置和获取spare_id */
   const Identity& spare_id() const { return spare_id_; }
   void set_spare_id(const Identity& spare_id) { spare_id_ = spare_id; }
 

@@ -45,10 +45,12 @@ typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(
 
 #define UNUSED(param) (void)param
 
+/* 禁用拷贝构造函数和拷贝赋值运算符 */
 #define DISALLOW_COPY_AND_ASSIGN(classname) \
   classname(const classname &) = delete;    \
   classname &operator=(const classname &) = delete;
 
+/* 单例模式 */
 #define DECLARE_SINGLETON(classname)                                      \
  public:                                                                  \
   static classname *Instance(bool create_if_needed = true) {              \
@@ -69,7 +71,9 @@ typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(
   }                                                                       \
                                                                           \
  private:                                                                 \
+  /* 构造函数 */
   classname();                                                            \
+  /* 禁用拷贝构造函数和拷贝赋值运算符 */
   DISALLOW_COPY_AND_ASSIGN(classname)
 
 #endif  // CYBER_COMMON_MACROS_H_

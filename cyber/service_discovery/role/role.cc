@@ -30,16 +30,19 @@ RoleBase::RoleBase(const RoleAttributes& attr, uint64_t timestamp_ns)
     : attributes_(attr), timestamp_ns_(timestamp_ns) {}
 
 bool RoleBase::Match(const RoleAttributes& target_attr) const {
+  /* Node ID */
   if (target_attr.has_node_id() &&
       target_attr.node_id() != attributes_.node_id()) {
     return false;
   }
 
+  /* Process ID */
   if (target_attr.has_process_id() &&
       target_attr.process_id() != attributes_.process_id()) {
     return false;
   }
 
+  /* Host Name */
   if (target_attr.has_host_name() &&
       target_attr.host_name() != attributes_.host_name()) {
     return false;
@@ -56,11 +59,13 @@ RoleWriter::RoleWriter(const RoleAttributes& attr, uint64_t timestamp_ns)
     : RoleBase(attr, timestamp_ns) {}
 
 bool RoleWriter::Match(const RoleAttributes& target_attr) const {
+  /* Channel ID */
   if (target_attr.has_channel_id() &&
       target_attr.channel_id() != attributes_.channel_id()) {
     return false;
   }
 
+  /* ID */
   if (target_attr.has_id() && target_attr.id() != attributes_.id()) {
     return false;
   }
@@ -72,6 +77,7 @@ RoleServer::RoleServer(const RoleAttributes& attr, uint64_t timestamp_ns)
     : RoleBase(attr, timestamp_ns) {}
 
 bool RoleServer::Match(const RoleAttributes& target_attr) const {
+  /* Service ID */
   if (target_attr.has_service_id() &&
       target_attr.service_id() != attributes_.service_id()) {
     return false;

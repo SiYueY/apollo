@@ -438,12 +438,15 @@ bool GetFilePathWithEnv(const std::string &path, const std::string &env_var,
   if (path.empty()) {
     return false;
   }
+
+  /* 绝对路径 */
   if (PathIsAbsolute(path)) {
     // an absolute path
     *file_path = path;
     return PathExists(path);
   }
 
+  /* 相对路径 */
   bool relative_path_exists = false;
   if (PathExists(path)) {
     // relative path exists

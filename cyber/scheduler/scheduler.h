@@ -55,51 +55,76 @@ using apollo::cyber::proto::InnerThread;
 class Processor;
 class ProcessorContext;
 
+/* Scheduler 调度器 */
 class Scheduler {
  public:
+  /* 析构函数 */
   virtual ~Scheduler() {}
+  /* 获取实例 */
   static Scheduler* Instance();
 
+  /* 创建任务 */
   bool CreateTask(const RoutineFactory& factory, const std::string& name);
   bool CreateTask(std::function<void()>&& func, const std::string& name,
                   std::shared_ptr<DataVisitorBase> visitor = nullptr);
+  /* 通知任务 */
   bool NotifyTask(uint64_t crid);
 
+  /* 关闭 */
   void Shutdown();
+  /* TaskPool大小 */
   uint32_t TaskPoolSize() { return task_pool_size_; }
 
+  /* 删除任务 */
   virtual bool RemoveTask(const std::string& name) = 0;
 
+  /* 处理等级资源控制 */
   void ProcessLevelResourceControl();
+  /* 设置内部线程属性 */
   void SetInnerThreadAttr(const std::string& name, std::thread* thr);
 
+  /* 派发任务 */
   virtual bool DispatchTask(const std::shared_ptr<CRoutine>&) = 0;
+  /* 唤醒执行器 */
   virtual bool NotifyProcessor(uint64_t crid) = 0;
+  /* 删除协程 */
   virtual bool RemoveCRoutine(uint64_t crid) = 0;
 
+  /* 检查调度状态 */
   void CheckSchedStatus();
 
+  /* 设置内部线程配置 */
   void SetInnerThreadConfs(
       const std::unordered_map<std::string, InnerThread>& confs) {
     inner_thr_confs_ = confs;
   }
 
  protected:
+  /* 构造函数 */
   Scheduler() : stop_(false) {}
 
+  /* ID-CRoutine读写锁 */
   AtomicRWLock id_cr_lock_;
+  /* ID-CRoutine映射互斥锁 */
   AtomicHashMap<uint64_t, MutexWrapper*> id_map_mutex_;
   std::mutex cr_wl_mtx_;
 
+  /* ID-CRoutine映射 */
   std::unordered_map<uint64_t, std::shared_ptr<CRoutine>> id_cr_;
+  /* ProcessorContext列表 */
   std::vector<std::shared_ptr<ProcessorContext>> pctxs_;
+  /* Processor列表 */
   std::vector<std::shared_ptr<Processor>> processors_;
 
+  /* 内部线程配置 */
   std::unordered_map<std::string, InnerThread> inner_thr_confs_;
 
   std::string process_level_cpuset_;
+  /* Prcoessor数量 */
   uint32_t proc_num_ = 0;
+  /* TaskPool大小 */
   uint32_t task_pool_size_ = 0;
+  /* 停止标志 */
   std::atomic<bool> stop_;
 };
 

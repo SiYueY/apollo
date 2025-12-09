@@ -26,7 +26,7 @@
 namespace apollo {
 namespace cyber {
 
-/* TimerBucket */
+/* TimerBucket 定时器桶 */
 class TimerBucket {
  public:
   /* 添加定时任务 */
@@ -38,12 +38,14 @@ class TimerBucket {
   /* 互斥锁 */
   std::mutex& mutex() { return mutex_; }
 
-  /* 定时任务列表 */
+  /* 获取定时任务列表 */
   std::list<std::weak_ptr<TimerTask>>& task_list() { return task_list_; }
 
  private:
-  std::mutex mutex_;                               // 互斥锁
-  std::list<std::weak_ptr<TimerTask>> task_list_;  // 定时任务列表
+  /* 互斥锁 */
+  std::mutex mutex_;
+  /* 定时任务列表 */
+  std::list<std::weak_ptr<TimerTask>> task_list_;
 };
 
 }  // namespace cyber

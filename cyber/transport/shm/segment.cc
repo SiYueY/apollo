@@ -24,6 +24,7 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 构造函数 */
 Segment::Segment(uint64_t channel_id)
     : init_(false),
       conf_(),
@@ -37,6 +38,7 @@ Segment::Segment(uint64_t channel_id)
       block_buf_addrs_(),
       arena_block_buf_addrs_() {}
 
+/* 请求写入Block */
 bool Segment::AcquireBlockToWrite(std::size_t msg_size,
                                   WritableBlock* writable_block) {
   RETURN_VAL_IF_NULL(writable_block, false);
@@ -283,6 +285,7 @@ bool Segment::Remap() {
   return OpenOnly();
 }
 
+/* 重新创建 */
 bool Segment::Recreate(const uint64_t& msg_size) {
   init_ = false;
   state_->set_need_remap(true);
@@ -292,6 +295,7 @@ bool Segment::Recreate(const uint64_t& msg_size) {
   return OpenOrCreate();
 }
 
+/* 获取下一可写Block的索引 */
 uint32_t Segment::GetNextWritableBlockIndex() {
   const auto block_num = conf_.block_num();
   while (1) {

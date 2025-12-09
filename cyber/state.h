@@ -31,7 +31,7 @@
 namespace apollo {
 namespace cyber {
 
-/* 状态 */
+/* 状态 State */
 enum State : std::uint8_t {
   STATE_UNINITIALIZED = 0, /* 未初始化 */
   STATE_INITIALIZED,       /* 已初始化 */
@@ -39,22 +39,31 @@ enum State : std::uint8_t {
   STATE_SHUTDOWN,          /* 已关闭 */
 };
 
+/* 获取状态 */
 State GetState();
+
+/* 设置状态 */
 void SetState(const State& state);
 
+/* 判断是否处于正常运行状态(即已初始化状态) */
 inline bool OK() { return GetState() == STATE_INITIALIZED; }
 
+/* 判断是否处于正在关闭或已关闭状态 */
 inline bool IsShutdown() {
   return GetState() == STATE_SHUTTING_DOWN || GetState() == STATE_SHUTDOWN;
 }
 
+/* 同步等待关闭 */
 inline void WaitForShutdown() {
+  // 循环检查状态，直到进入关闭状态。
   while (!IsShutdown()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 }
 
+/* 异步关闭 */
 inline void AsyncShutdown() {
+  // 向当前进程发送 SIGINT 信号，触发关闭流程
   pid_t pid = getpid();
   if (kill(pid, SIGINT) != 0) {
     AERROR << strerror(errno);

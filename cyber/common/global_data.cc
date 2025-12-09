@@ -70,31 +70,45 @@ GlobalData::~GlobalData() {}
 
 int GlobalData::ProcessId() const { return process_id_; }
 
+/* 设置进程组名称 */
 void GlobalData::SetProcessGroup(const std::string& process_group) {
   process_group_ = process_group;
 }
+
+/* 获取进程组名称 */
 const std::string& GlobalData::ProcessGroup() const { return process_group_; }
 
+/* 设置组件数量 */
 void GlobalData::SetComponentNums(const int component_nums) {
   component_nums_ = component_nums;
 }
+
+/* 获取组件数量 */
 int GlobalData::ComponentNums() const { return component_nums_; }
 
+/* 设置调度名称 */
 void GlobalData::SetSchedName(const std::string& sched_name) {
   sched_name_ = sched_name;
 }
+
+/* 获取调度名称 */
 const std::string& GlobalData::SchedName() const { return sched_name_; }
 
+/* 获取主机IP地址 */
 const std::string& GlobalData::HostIp() const { return host_ip_; }
 
+/* 获取主机名称 */
 const std::string& GlobalData::HostName() const { return host_name_; }
 
+/* 开启仿真模式 */
 void GlobalData::EnableSimulationMode() {
   run_mode_ = RunMode::MODE_SIMULATION;
 }
 
+/* 关闭仿真模式 */
 void GlobalData::DisableSimulationMode() { run_mode_ = RunMode::MODE_REALITY; }
 
+/* 开启真实模式 */
 bool GlobalData::IsRealityMode() const {
   return run_mode_ == RunMode::MODE_REALITY;
 }
@@ -153,6 +167,7 @@ void GlobalData::InitHostInfo() {
   gethostname(host_name, sizeof(host_name));
   host_name_ = host_name;
 
+  /* Host IP address */
   host_ip_ = "127.0.0.1";
 
   // if we have exported a non-loopback CYBER_IP, we will use it firstly,
@@ -279,6 +294,7 @@ std::string GlobalData::GetServiceById(uint64_t id) {
   return kEmptyString;
 }
 
+/* 注册任务名称，并返回其映射的id */
 uint64_t GlobalData::RegisterTaskName(const std::string& task_name) {
   auto id = Hash(task_name);
   while (task_id_map_.Has(id)) {
@@ -288,6 +304,7 @@ uint64_t GlobalData::RegisterTaskName(const std::string& task_name) {
       break;
     }
     ++id;
+    /* 任务名称冲突 */
     AWARN << "Task name hash collision: " << task_name << " <=> " << *name;
   }
   task_id_map_.Set(id, task_name);

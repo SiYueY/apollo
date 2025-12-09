@@ -24,17 +24,25 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 共享内存配置 */
 class ShmConf {
  public:
+  /* 构造函数 */
   ShmConf();
   explicit ShmConf(const uint64_t& real_msg_size);
+  /* 析构函数 */
   virtual ~ShmConf();
 
+  /* 更新 */
   void Update(const uint64_t& real_msg_size);
 
+  /* 获取MSG_SIZE */
   const uint64_t& ceiling_msg_size() { return ceiling_msg_size_; }
+  /* 获取BLOCK_BUF_SIZE */
   const uint64_t& block_buf_size() { return block_buf_size_; }
+  /* 获取BLOCK_NUM */
   const uint32_t& block_num() { return block_num_; }
+  /* 获取管理的共享内存大小 */
   const uint64_t& managed_shm_size() { return managed_shm_size_; }
 
   // For arena msg
@@ -42,15 +50,24 @@ class ShmConf {
   static const uint64_t ARENA_MESSAGE_SIZE;
 
  private:
+  /* 根据REAL_MSG_SIZE计算分配的固定共享内存大小MESSAGE_SIZE */
   uint64_t GetCeilingMessageSize(const uint64_t& real_msg_size);
+  /* 获取MSG_SIZE对应的BLOCK_BUF_SIZE */
   uint64_t GetBlockBufSize(const uint64_t& ceiling_msg_size);
+  /* 获取MESSAGE_SIZE对应的BLOCK_NUM */
   uint32_t GetBlockNum(const uint64_t& ceiling_msg_size);
 
+  /* MESSAGE_SIZE */
   uint64_t ceiling_msg_size_;
+  /* BLOCK_BUF_SIZE = MESSAGE_SIZE + MESSAGE_INFO_SIZE */
   uint64_t block_buf_size_;
+  /* BLOCK_NUM */
   uint32_t block_num_;
+  /* managed_shm_size = EXTRA_SIZE + STATE_SIZE + (BLOCK_SIZE + block_buf_size_) * block_num_ */
   uint64_t managed_shm_size_;
 
+    
+  /* 共享内存固定大小 */
   // Extra size, Byte
   static const uint64_t EXTRA_SIZE;
   // State size, Byte

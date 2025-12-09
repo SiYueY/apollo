@@ -27,9 +27,12 @@ namespace cyber {
 
 using apollo::cyber::common::GlobalData;
 
+/* 异步 */
 template <typename F, typename... Args>
 static auto Async(F&& f, Args&&... args)
     -> std::future<typename std::result_of<F(Args...)>::type> {
+  /* 实时模式：直接调用TaskManager的Enqueue接口 
+   * 非实时模式：使用std::async接口 */
   return GlobalData::Instance()->IsRealityMode()
              ? TaskManager::Instance()->Enqueue(std::forward<F>(f),
                                                 std::forward<Args>(args)...)

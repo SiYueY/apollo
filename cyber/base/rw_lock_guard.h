@@ -31,31 +31,43 @@ namespace apollo {
 namespace cyber {
 namespace base {
 
+/* Read Lock Guard */
 template <typename RWLock>
 class ReadLockGuard {
  public:
+  /* 构造函数 */
   explicit ReadLockGuard(RWLock& lock) : rw_lock_(lock) { rw_lock_.ReadLock(); }
 
+  /* 析构函数 */
   ~ReadLockGuard() { rw_lock_.ReadUnlock(); }
 
  private:
+  /* 禁止拷贝构造函数和拷贝赋值运算符 */
   ReadLockGuard(const ReadLockGuard& other) = delete;
   ReadLockGuard& operator=(const ReadLockGuard& other) = delete;
+
+  /* 读锁 */
   RWLock& rw_lock_;
 };
 
+/* Write Lock Guard */
 template <typename RWLock>
 class WriteLockGuard {
  public:
+  /* 构造函数 */
   explicit WriteLockGuard(RWLock& lock) : rw_lock_(lock) {
     rw_lock_.WriteLock();
   }
 
+  /* 析构函数 */
   ~WriteLockGuard() { rw_lock_.WriteUnlock(); }
 
  private:
+  /* 禁止拷贝构造函数和拷贝赋值运算符 */
   WriteLockGuard(const WriteLockGuard& other) = delete;
   WriteLockGuard& operator=(const WriteLockGuard& other) = delete;
+
+  /* 写锁 */
   RWLock& rw_lock_;
 };
 

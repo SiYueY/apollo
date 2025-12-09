@@ -34,7 +34,7 @@ namespace data {
 using apollo::cyber::Time;
 using apollo::cyber::base::AtomicHashMap;
 
-/* DataDispatcher 消息分发器: 单例模式，所有数据分发都在 DataDispatcher 中进行.
+/* DataDispatcher 数据分发器: 单例模式，所有数据分发都在 DataDispatcher 中进行.
  * DataDispatcher 会把数据放入对应缓存中，并 Notify 通知对应的协程处理消息 */
 template <typename T>
 class DataDispatcher {

@@ -41,16 +41,20 @@ void SharedLibrary::Load(const std::string& path) { Load(path, 0); }
 
 void SharedLibrary::Load(const std::string& path, int flags) {
   std::lock_guard<std::mutex> lock(mutex_);
+  /* 若已加载库, 抛出LibraryAlreadyLoadedException异常. */
   if (handle_) throw LibraryAlreadyLoadedException(path);
 
+  /* RTLD_LAZY: 只有当代码被执行时才解析库中未定义的函数符号 */
   int real_flag = RTLD_LAZY;
   if (flags & SHLIB_LOCAL) {
     real_flag |= RTLD_LOCAL;
   } else {
     real_flag |= RTLD_GLOBAL;
   }
+  /* 打开共享库 */
   handle_ = dlopen(path.c_str(), real_flag);
   if (!handle_) {
+    /* 错误诊断 */
     const char* err = dlerror();
     throw LibraryLoadException(err ? std::string(err) : path);
   }
@@ -61,6 +65,7 @@ void SharedLibrary::Load(const std::string& path, int flags) {
 void SharedLibrary::Unload() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (handle_) {
+    /* 关闭共享库 */
     dlclose(handle_);
     handle_ = nullptr;
   }
@@ -79,6 +84,7 @@ void* SharedLibrary::GetSymbol(const std::string& name) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (!handle_) return nullptr;
 
+  /* 获取符号地址 */
   void* result = dlsym(handle_, name.c_str());
   if (!result) {
     throw SymbolNotFoundException(name);

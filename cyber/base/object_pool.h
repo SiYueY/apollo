@@ -33,34 +33,45 @@ namespace apollo {
 namespace cyber {
 namespace base {
 
+/* Object Pool 对象池 */
 template <typename T>
 class ObjectPool : public std::enable_shared_from_this<ObjectPool<T>> {
  public:
   using InitFunc = std::function<void(T *)>;
   using ObjectPoolPtr = std::shared_ptr<ObjectPool<T>>;
 
+  /* 构造函数 */
   template <typename... Args>
   explicit ObjectPool(uint32_t num_objects, Args &&... args);
 
+  /* 构造函数 */
   template <typename... Args>
   ObjectPool(uint32_t num_objects, InitFunc f, Args &&... args);
 
+  /* 析构函数 */
   virtual ~ObjectPool();
 
+  /* 获取对象 */
   std::shared_ptr<T> GetObject();
 
  private:
+  /* Node 节点 */
   struct Node {
     T object;
     Node *next;
   };
 
+  /* 禁用拷贝构造函数和拷贝赋值运算符 */
   ObjectPool(ObjectPool &) = delete;
   ObjectPool &operator=(ObjectPool &) = delete;
+
+  /* 释放对象 */
   void ReleaseObject(T *);
 
+  /* 对象数量 */
   uint32_t num_objects_ = 0;
   char *object_arena_ = nullptr;
+  /* 头指针 */
   Node *free_head_ = nullptr;
 };
 

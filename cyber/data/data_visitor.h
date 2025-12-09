@@ -33,23 +33,26 @@ namespace apollo {
 namespace cyber {
 namespace data {
 
+/* Visitor Config 访问器配置 */
 struct VisitorConfig {
   VisitorConfig(uint64_t id, uint32_t size)
       : channel_id(id), queue_size(size) {}
-  uint64_t channel_id;
-  uint32_t queue_size;
+  uint64_t channel_id;  // Channle ID
+  uint32_t queue_size;  // Queue Size
 };
 
+/* BufferType 缓冲区类型 */
 template <typename T>
 using BufferType = CacheBuffer<std::shared_ptr<T>>;
 
-/* DataVisitor消息访问器: 辅助类，一个数据处理过程对应一个DataVisitor，
+/* DataVisitor 数据访问器: 辅助类，一个数据处理过程对应一个DataVisitor，
  * 通过在DataVisitor中注册Notify(唤醒对应协程，协程执行绑定的回调函数)，
  * 并注册对应的Buffer到DataDispather */
 template <typename M0, typename M1 = NullType, typename M2 = NullType,
           typename M3 = NullType>
 class DataVisitor : public DataVisitorBase {
  public:
+  /* 构造函数 */
   explicit DataVisitor(const std::vector<VisitorConfig>& configs)
       : buffer_m0_(configs[0].channel_id,
                    new BufferType<M0>(configs[0].queue_size)),
@@ -64,13 +67,14 @@ class DataVisitor : public DataVisitorBase {
     DataDispatcher<M1>::Instance()->AddBuffer(buffer_m1_);
     DataDispatcher<M2>::Instance()->AddBuffer(buffer_m2_);
     DataDispatcher<M3>::Instance()->AddBuffer(buffer_m3_);
-    // 在 DataNotifier::Instance() 中增加创建好的 Notifier
+    // 在 DataNotifier 中增加 Notifier
     data_notifier_->AddNotifier(buffer_m0_.channel_id(), notifier_);
-    // 对接收到的消息进行数据融合
+    // 数据融合
     data_fusion_ = new fusion::AllLatest<M0, M1, M2, M3>(
         buffer_m0_, buffer_m1_, buffer_m2_, buffer_m3_);
   }
 
+  /* 析构函数 */
   ~DataVisitor() {
     if (data_fusion_) {
       delete data_fusion_;

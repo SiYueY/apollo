@@ -34,17 +34,24 @@ using apollo::cyber::croutine::CRoutine;
 using apollo::cyber::proto::ClassicConf;
 using apollo::cyber::proto::ClassicTask;
 
+/* SchedulerClassic：多优先级队列 */
 class SchedulerClassic : public Scheduler {
  public:
+  /* 删除携程 */
   bool RemoveCRoutine(uint64_t crid) override;
+  /* 删除任务 */
   bool RemoveTask(const std::string& name) override;
+  /* 派发任务 */
   bool DispatchTask(const std::shared_ptr<CRoutine>&) override;
 
  private:
   friend Scheduler* Instance();
+  /* 构造函数 */
   SchedulerClassic();
 
+  /* 创建执行器Processor */
   void CreateProcessor();
+  /* 唤醒执行器Processor */
   bool NotifyProcessor(uint64_t crid) override;
 
   std::unordered_map<std::string, ClassicTask> cr_confs_;

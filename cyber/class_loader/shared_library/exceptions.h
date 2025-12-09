@@ -24,6 +24,7 @@ namespace apollo {
 namespace cyber {
 namespace class_loader {
 
+/* 定义共享库异常 */
 #define DECLARE_SHARED_LIBRARY_EXCEPTION(CLS, BASE)             \
   class CLS : public BASE {                                     \
    public:                                                      \

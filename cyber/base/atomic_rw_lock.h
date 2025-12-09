@@ -33,6 +33,7 @@ namespace apollo {
 namespace cyber {
 namespace base {
 
+/* AtomicRWLock 原子读写锁 */
 class AtomicRWLock {
   friend class ReadLockGuard<AtomicRWLock>;
   friend class WriteLockGuard<AtomicRWLock>;

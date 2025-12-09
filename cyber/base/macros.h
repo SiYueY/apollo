@@ -22,6 +22,7 @@
 
 #define eprosima eprosima_wrap
 
+/* 优化分支预测 */
 #if __GNUC__ >= 3
 #define cyber_likely(x) (__builtin_expect((x), 1))
 #define cyber_unlikely(x) (__builtin_expect((x), 0))
@@ -32,6 +33,7 @@
 
 #define CACHELINE_SIZE 64
 
+/* 定义类型萃取 */
 #define DEFINE_TYPE_TRAIT(name, func)                     \
   template <typename T>                                   \
   struct name {                                           \
@@ -50,6 +52,7 @@
   template <typename T>                                   \
   constexpr bool name<T>::value;
 
+/* CPU 空闲 */
 inline void cpu_relax() {
 #if defined(__aarch64__)
   asm volatile("yield" ::: "memory");
@@ -58,6 +61,7 @@ inline void cpu_relax() {
 #endif
 }
 
+/* Checked Malloc */
 inline void* CheckedMalloc(size_t size) {
   void* ptr = std::malloc(size);
   if (!ptr) {
@@ -66,6 +70,7 @@ inline void* CheckedMalloc(size_t size) {
   return ptr;
 }
 
+/* Checked Calloc */
 inline void* CheckedCalloc(size_t num, size_t size) {
   void* ptr = std::calloc(num, size);
   if (!ptr) {

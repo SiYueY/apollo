@@ -34,6 +34,7 @@ namespace scheduler {
 
 using apollo::cyber::common::GlobalData;
 
+/* 创建任务 */
 bool Scheduler::CreateTask(const RoutineFactory& factory,
                            const std::string& name) {
   return CreateTask(factory.create_routine(), name, factory.GetDataVisitor());
@@ -43,25 +44,26 @@ bool Scheduler::CreateTask(const RoutineFactory& factory,
 bool Scheduler::CreateTask(std::function<void()>&& func,
                            const std::string& name,
                            std::shared_ptr<DataVisitorBase> visitor) {
-  if (cyber_unlikely(stop_.load())) {
+  if (cyber_unlikely(stop_.load())) {  // 分支预测优化
     ADEBUG << "scheduler is stoped, cannot create task!";
     return false;
   }
 
-  // 根据名称创建任务ID
+  /* 注册任务名称 */
   auto task_id = GlobalData::RegisterTaskName(name);
 
+  /* 创建协程任务 */
   auto cr = std::make_shared<CRoutine>(func);
   cr->set_id(task_id);
   cr->set_name(name);
   AINFO << "create croutine: " << name;
 
-  // 分发协程任务
+  /* 派发协程任务 */
   if (!DispatchTask(cr)) {
     return false;
   }
 
-  // 注册Notify唤醒任务, visitor参数为可选的
+  /* 注册Notify回调函数以唤醒任务 */
   if (visitor != nullptr) {
     visitor->RegisterNotifyCallback([this, task_id]() {
       if (cyber_unlikely(stop_.load())) {
@@ -73,6 +75,7 @@ bool Scheduler::CreateTask(std::function<void()>&& func,
   return true;
 }
 
+/* 唤醒任务 */
 bool Scheduler::NotifyTask(uint64_t crid) {
   if (cyber_unlikely(stop_.load())) {
     return true;

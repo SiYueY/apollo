@@ -27,6 +27,7 @@ ShmConf::ShmConf(const uint64_t& real_msg_size) { Update(real_msg_size); }
 
 ShmConf::~ShmConf() {}
 
+/* 更新 */
 void ShmConf::Update(const uint64_t& real_msg_size) {
   ceiling_msg_size_ = GetCeilingMessageSize(real_msg_size);
   block_buf_size_ = GetBlockBufSize(ceiling_msg_size_);
@@ -36,6 +37,7 @@ void ShmConf::Update(const uint64_t& real_msg_size) {
                       (BLOCK_SIZE + ARENA_MESSAGE_SIZE) * ARENA_BLOCK_NUM;
 }
 
+/* 共享内存固定大小 */
 const uint64_t ShmConf::EXTRA_SIZE = 1024 * 4;
 const uint64_t ShmConf::STATE_SIZE = 1024;
 const uint64_t ShmConf::BLOCK_SIZE = 1024;
@@ -62,6 +64,7 @@ const uint64_t ShmConf::MESSAGE_SIZE_16M = 1024 * 1024 * 16;
 const uint32_t ShmConf::BLOCK_NUM_MORE = 8;
 const uint64_t ShmConf::MESSAGE_SIZE_MORE = 1024 * 1024 * 32;
 
+/* 根据REAL_MSG_SIZE计算分配的固定共享内存大小MESSAGE_SIZE */
 uint64_t ShmConf::GetCeilingMessageSize(const uint64_t& real_msg_size) {
   uint64_t ceiling_msg_size = MESSAGE_SIZE_16K;
   if (real_msg_size <= MESSAGE_SIZE_16K) {
@@ -80,10 +83,13 @@ uint64_t ShmConf::GetCeilingMessageSize(const uint64_t& real_msg_size) {
   return ceiling_msg_size;
 }
 
+
+/* 获取MSG_SIZE对应的BLOCK_BUF_SIZE */
 uint64_t ShmConf::GetBlockBufSize(const uint64_t& ceiling_msg_size) {
   return ceiling_msg_size + MESSAGE_INFO_SIZE;
 }
 
+/* 获取MESSAGE_SIZE对应的BLOCK_NUM */
 uint32_t ShmConf::GetBlockNum(const uint64_t& ceiling_msg_size) {
   uint32_t num = 0;
   switch (ceiling_msg_size) {

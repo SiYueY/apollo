@@ -31,8 +31,10 @@
 namespace apollo {
 namespace cyber {
 
+/* Task Manager */
 class TaskManager {
  public:
+  /* 析构函数 */
   virtual ~TaskManager();
 
   void Shutdown();

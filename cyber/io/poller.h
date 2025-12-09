@@ -33,42 +33,65 @@ namespace apollo {
 namespace cyber {
 namespace io {
 
+/* Poller */
 class Poller {
  public:
+  /* Request Pointer */
   using RequestPtr = std::shared_ptr<PollRequest>;
+  /* Request Map */
   using RequestMap = std::unordered_map<int, RequestPtr>;
+  /* Control Parameter Map */
   using CtrlParamMap = std::unordered_map<int, PollCtrlParam>;
 
+  /* 析构函数 */
   virtual ~Poller();
 
+  /* 关闭 */
   void Shutdown();
 
+  /* 注册/注销 */
   bool Register(const PollRequest& req);
   bool Unregister(const PollRequest& req);
 
  private:
+  /* 初始化 */
   bool Init();
+  /* 清空 */
   void Clear();
+  /* Poll 轮训 */
   void Poll(int timeout_ms);
+  /* 线程函数 */
   void ThreadFunc();
+  /* 处理事件 */
   void HandleChanges();
+  /* 获取超时时间 */
   int GetTimeoutMs();
+  /* 通知 */
   void Notify();
 
   int epoll_fd_ = -1;
+  /* 线程 */
   std::thread thread_;
+  /* 是否关闭 */
   std::atomic<bool> is_shutdown_ = {true};
 
+  /* 管道 */
   int pipe_fd_[2] = {-1, -1};
+  /* 管道互斥锁 */
   std::mutex pipe_mutex_;
 
+  /* 请求 Map */
   RequestMap requests_;
   CtrlParamMap ctrl_params_;
+  /* 读写锁 */
   base::AtomicRWLock poll_data_lock_;
 
+  /* Poll Size */
   const int kPollSize = 32;
+  /* Poll Timeout */
   const int kPollTimeoutMs = 100;
 
+  /* 单例模式 */
   DECLARE_SINGLETON(Poller)
 };
 

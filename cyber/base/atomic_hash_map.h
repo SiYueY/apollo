@@ -27,7 +27,7 @@ namespace cyber {
 namespace base {
 /**
  * @brief A implementation of lock-free fixed size hash map
- *
+ * 无锁哈希表(固定大小)
  * @tparam K Type of key, must be integral
  * @tparam V Type of value
  * @tparam 128 Size of hash table
@@ -39,10 +39,14 @@ template <typename K, typename V, std::size_t TableSize = 128,
                                   int>::type = 0>
 class AtomicHashMap {
  public:
+  /* 构造函数 */
   AtomicHashMap() : capacity_(TableSize), mode_num_(capacity_ - 1) {}
+  /* 禁用拷贝构造函数 */
   AtomicHashMap(const AtomicHashMap &other) = delete;
+  /* 禁用拷贝赋值运算符 */
   AtomicHashMap &operator=(const AtomicHashMap &other) = delete;
 
+  /* 是否存在key */
   bool Has(K key) {
     uint64_t index = key & mode_num_;
     return table_[index].Has(key);
@@ -79,7 +83,9 @@ class AtomicHashMap {
   }
 
  private:
+  /* 哈希表条目 */
   struct Entry {
+    /* 构造函数 */
     Entry() {}
     explicit Entry(K key) : key(key) {
       value_ptr.store(new V(), std::memory_order_release);
@@ -90,16 +96,24 @@ class AtomicHashMap {
     Entry(K key, V &&value) : key(key) {
       value_ptr.store(new V(std::forward<V>(value)), std::memory_order_release);
     }
+
+    /* 析构函数 */
     ~Entry() { delete value_ptr.load(std::memory_order_acquire); }
 
+    /* Key*/
     K key = 0;
+    /* Value Pointer */
     std::atomic<V *> value_ptr = {nullptr};
     std::atomic<Entry *> next = {nullptr};
   };
 
+  /* Bucket 桶 */
   class Bucket {
    public:
+    /* 构造函数 */
     Bucket() : head_(new Entry()) {}
+
+    /* 析构函数 */
     ~Bucket() {
       Entry *ite = head_;
       while (ite) {
@@ -109,6 +123,7 @@ class AtomicHashMap {
       }
     }
 
+    /* 是否存在key */
     bool Has(K key) {
       Entry *m_target = head_->next.load(std::memory_order_acquire);
       while (Entry *target = m_target) {

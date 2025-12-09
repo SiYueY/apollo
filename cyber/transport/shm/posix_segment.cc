@@ -30,12 +30,15 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 构造函数 */
 PosixSegment::PosixSegment(uint64_t channel_id) : Segment(channel_id) {
   shm_name_ = std::to_string(channel_id);
 }
 
+/* 析构函数 */
 PosixSegment::~PosixSegment() { Destroy(); }
 
+/* 打开或创建共享内存 */
 bool PosixSegment::OpenOrCreate() {
   if (init_) {
     return true;
@@ -170,6 +173,7 @@ bool PosixSegment::OpenOrCreate() {
   return true;
 }
 
+/* 仅仅打开共享内存 */
 bool PosixSegment::OpenOnly() {
   if (init_) {
     return true;
@@ -291,6 +295,7 @@ bool PosixSegment::OpenOnly() {
   return true;
 }
 
+/* 移除 */
 bool PosixSegment::Remove() {
   if (shm_unlink(shm_name_.c_str()) < 0) {
     AERROR << "shm_unlink failed: " << strerror(errno);
@@ -299,6 +304,7 @@ bool PosixSegment::Remove() {
   return true;
 }
 
+/* 重置 */
 void PosixSegment::Reset() {
   state_ = nullptr;
   blocks_ = nullptr;

@@ -28,19 +28,27 @@ namespace apollo {
 namespace cyber {
 namespace service_discovery {
 
+/* SingleValu单值仓库 */
 class SingleValueWarehouse : public WarehouseBase {
  public:
+  /* RoleMap */
   using RoleMap = std::unordered_map<uint64_t, RolePtr>;
 
+  /* 构造函数 */
   SingleValueWarehouse() {}
+  /* 析构函数 */
   virtual ~SingleValueWarehouse() {}
 
+  /* 添加 */
   bool Add(uint64_t key, const RolePtr& role,
            bool ignore_if_exist = true) override;
 
+  /* 清空 */
   void Clear() override;
+  /* 大小 */
   std::size_t Size() override;
 
+  /* 移除*/
   void Remove(uint64_t key) override;
   void Remove(uint64_t key, const RolePtr& role) override;
   void Remove(const proto::RoleAttributes& target_attr) override;
@@ -63,11 +71,14 @@ class SingleValueWarehouse : public WarehouseBase {
   bool Search(const proto::RoleAttributes& target_attr,
               std::vector<proto::RoleAttributes>* matched_roles_attr) override;
 
+  /* 获取所有Role */
   void GetAllRoles(std::vector<RolePtr>* roles) override;
   void GetAllRoles(std::vector<proto::RoleAttributes>* roles_attr) override;
 
  private:
+  /* Role Map */
   RoleMap roles_;
+  /* RW Lock */
   base::AtomicRWLock rw_lock_;
 };
 

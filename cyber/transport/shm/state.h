@@ -26,11 +26,15 @@ namespace apollo {
 namespace cyber {
 namespace transport {
 
+/* 状态 */
 class State {
  public:
+  /* 构造函数 */
   explicit State(const uint64_t& ceiling_msg_size);
+  /* 析构函数 */
   virtual ~State();
 
+  /* 减少引用计数 */
   void DecreaseReferenceCounts() {
     uint32_t current_reference_count = reference_count_.load();
     do {
@@ -41,9 +45,13 @@ class State {
         current_reference_count, current_reference_count - 1));
   }
 
+  /* 增加引用计数 */
   void IncreaseReferenceCounts() { reference_count_.fetch_add(1); }
 
+  /* 获取序列号 */
   uint32_t FetchAddSeq(uint32_t diff) { return seq_.fetch_add(diff); }
+  
+  /* 获取序列号 */
   uint32_t seq() { return seq_.load(); }
 
   uint32_t FetchAddArenaSeq(uint32_t diff) {
@@ -52,16 +60,22 @@ class State {
   uint32_t arena_seq() { return arena_seq_.load(); }
 
   void set_need_remap(bool need) { need_remap_.store(need); }
+  /* 获取是否需要重新映射 */
   bool need_remap() { return need_remap_; }
 
+  /* 设置消息大小上限 */
   uint64_t ceiling_msg_size() { return ceiling_msg_size_.load(); }
+  /* 获取引用计数 */
   uint32_t reference_counts() { return reference_count_.load(); }
 
  private:
+  /* 是否需要重新映射 */
   std::atomic<bool> need_remap_ = {false};
+  /* 序列号 */
   std::atomic<uint32_t> seq_ = {0};
   std::atomic<uint32_t> arena_seq_ = {0};
   std::atomic<uint32_t> reference_count_ = {0};
+  /* 消息大小上限 */
   std::atomic<uint64_t> ceiling_msg_size_;
 };
 

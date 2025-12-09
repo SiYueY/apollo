@@ -32,29 +32,33 @@ namespace service_discovery {
 class TopologyManager;
 
 /**
- * @class NodeManager
+ * @class NodeManager 节点管理器
  * @brief Topology Manager of Node related
  */
 class NodeManager : public Manager {
   friend class TopologyManager;
 
  public:
+  /* 节点属性 */
   using RoleAttrVec = std::vector<RoleAttributes>;
+  /* 节点仓库 */
   using NodeWarehouse = SingleValueWarehouse;
 
   /**
    * @brief Construct a new Node Manager object
+   * 构造函数
    */
   NodeManager();
 
   /**
    * @brief Destroy the Node Manager object
+   * 析构函数
    */
   virtual ~NodeManager();
 
   /**
    * @brief Checkout whether we have `node_name` in topology
-   *
+   * 检查是否存在节点
    * @param node_name Node's name we want to inquire
    * @return true if this node found
    * @return false if this node not exits
@@ -63,7 +67,7 @@ class NodeManager : public Manager {
 
   /**
    * @brief Get the Nodes object
-   *
+   * 获取节点
    * @param nodes result RoleAttr vector
    */
   void GetNodes(RoleAttrVec* nodes);

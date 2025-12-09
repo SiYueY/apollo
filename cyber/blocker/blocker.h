@@ -68,6 +68,7 @@ class Blocker : public BlockerBase {
   using MessageType = T;
   using MessagePtr = std::shared_ptr<T>;
   using MessageQueue = std::list<MessagePtr>;
+  /* */
   using Callback = std::function<void(const MessagePtr&)>;
   using CallbackMap = std::unordered_map<std::string, Callback>;
   using Iterator = typename std::list<std::shared_ptr<T>>::const_iterator;

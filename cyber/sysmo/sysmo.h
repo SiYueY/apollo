@@ -31,22 +31,33 @@ namespace cyber {
 
 using apollo::cyber::scheduler::Scheduler;
 
+/* Systems Monitor */
 class SysMo {
  public:
+  /* 启动 */
   void Start();
+  /* 关闭 */
   void Shutdown();
 
  private:
+  /* 检查 */
   void Checker();
 
+  /* 是否关闭 */
   std::atomic<bool> shut_down_{false};
+  /* 是否启动 */
   bool start_ = false;
 
+  /* 时间间隔(ms) */
   int sysmo_interval_ms_ = 100;
+  /* 条件变量 */
   std::condition_variable cv_;
+  /* 互斥锁 */
   std::mutex lk_;
+  /* 线程 */
   std::thread sysmo_;
 
+  /* 单例模式 */
   DECLARE_SINGLETON(SysMo);
 };
 

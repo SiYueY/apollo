@@ -33,14 +33,18 @@ namespace transport {
 using apollo::cyber::event::PerfEventCache;
 using apollo::cyber::event::TransPerf;
 
+/* Transmitter 基类 */
 template <typename M>
 class Transmitter : public Endpoint {
  public:
   using MessagePtr = std::shared_ptr<M>;
 
+  /* 构造函数 */
   explicit Transmitter(const RoleAttributes& attr);
+  /* 析构函数 */
   virtual ~Transmitter();
 
+  /* 开启/关闭 */
   virtual void Enable() = 0;
   virtual void Disable() = 0;
 
@@ -49,6 +53,7 @@ class Transmitter : public Endpoint {
   virtual void Enable(const RoleAttributes& opposite_attr);
   virtual void Disable(const RoleAttributes& opposite_attr);
 
+  /* 发送消息 */
   virtual bool Transmit(const MessagePtr& msg);
   virtual bool Transmit(const MessagePtr& msg, const MessageInfo& msg_info) = 0;
 
@@ -64,6 +69,7 @@ class Transmitter : public Endpoint {
   std::shared_ptr<::bvar::Adder<int>> seq_num_;
 };
 
+/* 构造函数 */
 template <typename M>
 Transmitter<M>::Transmitter(const RoleAttributes& attr) : Endpoint(attr) {
   msg_info_.set_sender_id(this->id_);
@@ -84,12 +90,14 @@ bool Transmitter<M>::Transmit(const MessagePtr& msg) {
   return Transmit(msg, msg_info_);
 }
 
+/* 开启 */
 template <typename M>
 void Transmitter<M>::Enable(const RoleAttributes& opposite_attr) {
   (void)opposite_attr;
   Enable();
 }
 
+/* 关闭 */
 template <typename M>
 void Transmitter<M>::Disable(const RoleAttributes& opposite_attr) {
   (void)opposite_attr;

@@ -50,12 +50,16 @@ using apollo::cyber::base::WriteLockGuard;
 class ShmDispatcher : public Dispatcher {
  public:
   // key: channel_id
+  /* <key, value> = <channel_id, segment_ptr>*/
   using SegmentContainer = std::unordered_map<uint64_t, SegmentPtr>;
 
+  /* 析构函数 */
   virtual ~ShmDispatcher();
 
+  /* 关闭 */
   void Shutdown() override;
 
+  /* 添加Listener */
   template <typename MessageT>
   void AddListener(const RoleAttributes& self_attr,
                    const MessageListener<MessageT>& listener);

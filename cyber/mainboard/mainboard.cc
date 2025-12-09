@@ -33,8 +33,9 @@
 using apollo::cyber::mainboard::ModuleArgument;
 using apollo::cyber::mainboard::ModuleController;
 
+/* Cyber入口 */
 int main(int argc, char** argv) {
-  // parse the argument 解析参数
+  /* 解析命令行参数 */
   ModuleArgument module_args;
   module_args.ParseArgument(argc, argv);
 
@@ -61,29 +62,34 @@ int main(int argc, char** argv) {
     dag_info = module_args.GetProcessGroup();
   }
 
-  // initialize cyber
+  /* 初始化Cyber */
   apollo::cyber::Init(argv[0], dag_info);
 
   static bool enable_cpu_profile = module_args.GetEnableCpuprofile();
   static bool enable_mem_profile = module_args.GetEnableHeapprofile();
+
+  /* 注册SIGTERM信号处理函数 */
   std::signal(SIGTERM, [](int sig){
     apollo::cyber::OnShutdown(sig);
+    /* 停止CPU性能分析 */
     if (enable_cpu_profile) {
       ProfilerStop();
     }
 
+    /* 停止内存性能分析 */
     if (enable_mem_profile) {
       HeapProfilerDump("Befor shutdown");
       HeapProfilerStop();
     }
   });
 
+  /* 启动堆内存性能分析 */
   if (module_args.GetEnableHeapprofile()) {
     auto profile_filename = module_args.GetHeapProfileFilename();
     HeapProfilerStart(profile_filename.c_str());
   }
 
-  // start module
+  /* 启动模块 */
   ModuleController controller(module_args);
   if (!controller.Init()) {
     controller.Clear();
@@ -91,17 +97,21 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  /* 启动CPU性能分析 */
   if (module_args.GetEnableCpuprofile()) {
     auto profile_filename = module_args.GetProfileFilename();
     ProfilerStart(profile_filename.c_str());
   }
 
+  /* 等待关机 */
   apollo::cyber::WaitForShutdown();
 
+  /* 停止CPU性能分析 */
   if (module_args.GetEnableCpuprofile()) {
     ProfilerStop();
   }
 
+  /* 停止内存性能分析 */
   if (module_args.GetEnableHeapprofile()) {
     HeapProfilerDump("Befor shutdown");
     HeapProfilerStop();

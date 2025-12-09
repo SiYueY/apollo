@@ -26,7 +26,7 @@ namespace apollo {
 namespace cyber {
 
 /**
- * @class ClientBase
+ * @class ClientBase 客户端基类
  * @brief Base class of Client
  *
  */
@@ -34,31 +34,37 @@ class ClientBase {
  public:
   /**
    * @brief Construct a new Client Base object
-   *
+   * 构造函数
    * @param service_name the service we can request
    */
   explicit ClientBase(const std::string& service_name)
       : service_name_(service_name) {}
+  /* 析构函数 */
   virtual ~ClientBase() {}
 
   /**
    * @brief Destroy the Client
+   * 销毁
    */
   virtual void Destroy() = 0;
 
   /**
    * @brief Get the service name
+   * 获取服务名称
    */
   const std::string& ServiceName() const { return service_name_; }
 
   /**
    * @brief Ensure whether there is any Service named `service_name_`
+   * 确保是否存在名为`service_name_`的服务
    */
   virtual bool ServiceIsReady() const = 0;
 
  protected:
+  /* 服务名称 */
   std::string service_name_;
 
+  /* 等待服务 */
   bool WaitForServiceNanoseconds(std::chrono::nanoseconds time_out) {
     bool has_service = false;
     auto step_duration = std::chrono::nanoseconds(5 * 1000 * 1000);

@@ -35,8 +35,10 @@ namespace apollo {
 namespace cyber {
 namespace scheduler {
 
+/* 最大优先级 */
 static constexpr uint32_t MAX_PRIO = 20;
 
+/* 默认组名 */
 #define DEFAULT_GROUP_NAME "default_grp"
 
 using CROUTINE_QUEUE = std::vector<std::shared_ptr<CRoutine>>;

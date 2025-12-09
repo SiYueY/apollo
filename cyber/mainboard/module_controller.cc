@@ -29,10 +29,13 @@ namespace mainboard {
 
 /* 清除所有模块 */
 void ModuleController::Clear() {
+  /* 关闭所有组件 */
   for (auto& component : component_list_) {
     component->Shutdown();
   }
+  /* 清除组件列表 */
   component_list_.clear();  // keep alive
+  /* 卸载所有库 */
   class_loader_manager_.UnloadAllLibrary();
 }
 
@@ -63,6 +66,7 @@ bool ModuleController::LoadAll() {
     total_component_nums += GetComponentNum(module_path);
     paths.emplace_back(std::move(module_path));
   }
+  /* 获取定时器组件数量 */
   if (has_timer_component) {
     total_component_nums += scheduler::Instance()->TaskPoolSize();
   }
@@ -80,7 +84,7 @@ bool ModuleController::LoadAll() {
 /* 加载模块 */
 bool ModuleController::LoadModule(const DagConfig& dag_config) {
   for (auto module_config : dag_config.module_config()) {
-    std::string load_path;  /* 加载路径 */
+    std::string load_path;  /* 模块加载路径 */
     if (!common::GetFilePathWithEnv(module_config.module_library(),
                                     "APOLLO_LIB_PATH", &load_path)) {
       AERROR << "no module library [" << module_config.module_library()
